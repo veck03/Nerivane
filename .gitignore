@@ -1,36 +1,56 @@
-.ipynb_checkpoints/
+# Local environment files and secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
 
-# Python
-__pycache__/
+# Python virtual environments and generated files
+**/.venv/
+**/venv/
+**/env/
+**/__pycache__/
 *.py[cod]
-*.pyo
+*$py.class
 .pytest_cache/
-.venv/
-venv/
-
-# Environment variables and secrets
-.env
-.env.*
-!.env.example
-
-# Frontend
-node_modules/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 dist/
-npm-debug.log*
+build/
+*.egg-info/
 
-# Generated vector database and model files
-backend/data/vector_db/
-*.faiss
-*.pkl
+# Local ingestion data, downloaded PDFs, and persistent vector database
+/backend/data/
 
-# Local research PDFs
-backend/data/papers/*.pdf
+# Local ocean datasets and generated inspection outputs
+/data/
 
-# Temporary evaluation output
-backend/src/evaluation/evaluation_output/
+# JavaScript dependencies and build output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/build/
+**/.next/
+**/coverage/
+**/logs/
+*.local
 
-# Editor and OS files
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tempCodeRunnerFile.py
+
+# Editor and operating system files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+Desktop.ini

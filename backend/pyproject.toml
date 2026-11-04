@@ -1,0 +1,28 @@
+[project]
+name = "backend"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "chromadb>=1.0.0",
+    "dask[array]>=2025.1.0",
+    "fastapi>=0.115.0",
+    "ipykernel>=6.29.0",
+    "jupyter>=1.1.0",
+    "langchain-huggingface>=0.1.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.3.0",
+    "langchain-text-splitters>=0.3.0",
+    "matplotlib>=3.10.0",
+    "netcdf4>=1.7.0",
+    "pymupdf>=1.25.0",
+    "python-dotenv>=1.0.0",
+    "rank-bm25>=0.2.2",
+    "requests>=2.32.0",
+    "sentence-transformers>=3.0.0",
+    "xarray>=2025.1.0",
+    "zarr>=3.0.0",
+    "uvicorn[standard]>=0.34.0",
+    "numpy>=2.5.4",
+    "pydantic>=2.14.2",
+    "dotenv>=0.9.9",
+]
