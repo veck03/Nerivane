@@ -1,219 +1,150 @@
-# Agentic Scientific Research Assistant
+# Nerivane — Ocean Research Assistant
 
-An agentic research assistant that answers questions about ocean and climate research papers using hybrid retrieval, reranking, and citation-grounded generation. It also supports numerical queries over a structured oceanographic dataset.
+A local research assistant for querying the ocean Q1 2020 master dataset and an indexed collection of research papers. A Groq-backed router selects `data`, `paper`, `both`, or `none`. Paper retrieval combines local Hugging Face embeddings and BM25 keyword search; data questions use tools over the master Zarr dataset.
 
-## Overview
+## How a chat request works
 
-Scientific research often requires searching across multiple papers, locating relevant evidence, and combining information from different sources. This project explores an AI assistant that automates parts of that workflow.
+1. The React app sends a question to FastAPI.
+2. The router makes one Groq call and selects a route.
+3. The selected source agents run:
+   - `data` or `both`: the ocean data agent chooses and calls Python data tools.
+   - `paper` or `both`: the query is embedded locally and hybrid retrieval returns paper chunks. Optional publication-year filters apply here.
+   - `none`: no data or paper retrieval runs.
+4. The final answer agent makes one Groq call with the route and gathered context.
+5. The backend validates paper source labels and page numbers, builds references, and returns the answer and sources.
+6. If **Check claim support** is enabled, another Groq call compares claims with retrieved evidence. It is a review aid, not proof.
 
-The system uses an LLM-based router to determine whether a query requires research-paper retrieval, structured data analysis, or both. For paper-based questions, it retrieves relevant passages and reranks them before generating an answer with source references.
+Paper citations use response-local labels such as `[S1, p. 4]`, mapped to stable paper IDs. The chat shows paper details and excerpts, links to available DOI or landing pages, and can copy references or download BibTeX.
 
-### Key Features
+## LLM call counts
 
-* **Agentic query routing:** Classifies questions into paper retrieval, structured data analysis, or combined queries.
-* **Hybrid retrieval:** Combines dense vector search and BM25 keyword search using Reciprocal Rank Fusion.
-* **Cross-encoder reranking:** Reorders retrieved passages based on their relevance to the query.
-* **Grounded answer generation:** Generates responses using retrieved evidence and includes paper/page references.
-* **Structured data tool:** Answers numerical questions using a sample oceanographic dataset.
-* **FastAPI backend:** Exposes the assistant through an HTTP API.
-* **React frontend:** Provides a web interface for submitting questions and viewing answers and evidence.
+These are logical Groq model invocations per question, not counting transient HTTP retries. Local Hugging Face embeddings, Chroma/BM25 retrieval, Python data tools, citation validation, and reference formatting do not call an LLM.
 
-## Architecture
+| Route | Calls without optional claim check | Notes |
+|---|---:|---|
+| `none` | 2 | One router call and one final-answer call. |
+| `paper` | 2 | One router call and one final-answer call. If claim checking is enabled and paper sources exist, add 1. |
+| `data` | 3–6 | Router 1 + data agent 1–4 + final answer 1. |
+| `both` | 3–6 | Router 1 + data agent 1–4 + final answer 1. Claim checking adds 1 when enabled and paper sources or a data-agent result are present. |
 
-```mermaid
-flowchart TD
-    A[User Query] --> B[React Frontend]
-    B --> C[FastAPI]
-    C --> D[Query Router]
-    D -->|PAPER| E[Paper Retrieval]
-    D -->|DATA| F[Ocean Data Tool]
-    D -->|BOTH| E
-    D -->|BOTH| F
-    E --> G[Hybrid Retrieval]
-    G --> H[Cross-Encoder Reranking]
-    H --> I[Evidence]
-    F --> J[Data Results]
-    I --> K[Answer Generation]
-    J --> K
-    K --> L[Answer with Sources]
-    L --> B
-```
+The data agent can select several Python tools during one model turn; those tool executions are not additional LLM calls. It allows up to three tool-producing rounds. It may make a fourth model call to decide it is finished or hit the round limit, so the maximum is four data-agent calls. The optional support check only runs on `paper` and `both` routes. It adds one call when paper sources or a data-agent result are present; it is skipped when there are no paper sources and `raw_data_output` is `None`.
 
-## Retrieval Pipeline
-
-1. **Document ingestion:** Research PDFs are extracted and processed into text.
-2. **Chunking:** Text is divided into overlapping chunks with paper and page metadata.
-3. **Dense retrieval:** Sentence-transformer embeddings are used to retrieve semantically relevant passages from ChromaDB.
-4. **Keyword retrieval:** BM25 finds passages that match important terms in the query.
-5. **Hybrid fusion:** Reciprocal Rank Fusion combines the dense and keyword rankings.
-6. **Reranking:** A cross-encoder scores the candidate passages and selects the most relevant evidence.
-7. **Answer generation:** The language model uses the selected evidence to produce a response with citations.
-
-## Technology Stack
-
-| Component         | Technology                 |
-| ----------------- | -------------------------- |
-| Language          | Python                     |
-| LLM and routing   | Groq API, Qwen             |
-| Embeddings        | Sentence Transformers      |
-| Vector database   | ChromaDB                   |
-| Keyword retrieval | BM25                       |
-| Reranking         | Cross-encoder              |
-| Data processing   | pandas                     |
-| Backend           | FastAPI                    |
-| Frontend          | React, Vite                |
-| Evaluation        | Custom evaluation pipeline |
-
-## Research Corpus and Dataset
-
-The research corpus focuses on ocean science, ENSO dynamics, ocean prediction, and sea-surface temperature modeling.
-
-The structured data tool uses a small sample oceanographic dataset containing date, latitude, longitude, depth, temperature, and salinity fields. The sample dataset is intended to demonstrate the data-querying workflow and should not be treated as a comprehensive observational dataset.
-
-Research PDFs and generated vector database files are not included in the repository. Follow the setup instructions and ensure the required local data files are available before running the full system.
-
-## Evaluation
-
-The project was evaluated using a set of 11 test cases.
-
-| Metric                      |        Result |
-| --------------------------- | ------------: |
-| Test cases completed        |       11 / 11 |
-| Route accuracy              |          100% |
-| Basic answer/refusal checks |          100% |
-| Citation validity           |       73 / 73 |
-| Retrieval Hit@1             |         83.3% |
-| Retrieval Hit@3             |          100% |
-| Retrieval Hit@5             |          100% |
-| Mean Reciprocal Rank        |         0.917 |
-| Data answer correctness     |         2 / 2 |
-| Average latency             | 8.98 seconds |
-
-These results reflect the current evaluation set and test environment. They should not be interpreted as guarantees of performance on arbitrary research questions or larger datasets.
-
-## Project Structure
+## Project layout
 
 ```text
-Agentic-RAG/
-├── backend/
-│   ├── data/
-│   │   ├── ocean/
-│   │   ├── papers/
-│   │   ├── processed/
-│   │   └── vector_db/
-│   ├── src/
-│   │   ├── agent/
-│   │   ├── api/
-│   │   ├── data_tools/
-│   │   ├── evaluation/
-│   │   ├── ingestion/
-│   │   └── retrieval/
-│   ├── tests/
-│   └── requirements.txt
-├── frontend/
-│   ├── public/
-│   └── src/
-├── notebooks/
-└── README.md
+backend/                 FastAPI app, agents, ingestion, and data tools
+data/                    Local ocean datasets (ignored by Git)
+frontend/react_app/      React + Vite chat frontend
+notebooks/               Dataset inspection notebooks
 ```
 
-## Local Setup
+The ocean data tools read only:
 
-### Prerequisites
-
-* Python 3.12 (or the Python version used to create your environment)
-* Node.js and npm
-* A Groq API key
-* The research PDFs and any required processed data
-
-### 1. Clone the repository
-
-```bash
-git clone <YOUR_REPOSITORY_URL>
-cd Agentic-RAG
+```text
+data/legacy_dataset/processed/ocean_q1_2020.zarr
 ```
 
-### 2. Set up the Python environment
+Raw NetCDF files for inspection can be placed under `data/legacy_dataset/raw/`. The dataset, downloaded PDFs, Chroma database, and ingestion state are local generated/user data and are not included in Git.
+
+## Requirements
+
+- Python 3.14 or newer
+- [uv](https://docs.astral.sh/uv/)
+- Node.js and npm
+- A Groq API key
+- The master Zarr dataset for ocean data questions
+
+## Configure and install the backend
+
+From PowerShell:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r backend/requirements.txt
+cd D:\Projects\Nerivane\backend
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-### 3. Configure environment variables
+Edit `backend/.env` locally and set `GROQ_API_KEY`. `GROQ_CHAT_MODEL` is optional; the configured default is `openai/gpt-oss-120b` on Groq. `OPENALEX_API_KEY` and `MAIL_TO` are optional for OpenAlex ingestion. Never commit `.env` or put actual keys in source files. The root `.gitignore` ignores `.env` and keeps `.env.example`.
 
-Create `backend/.env` and add your API key:
-
-```env
-GROQ_API_KEY=your_groq_api_key
-```
-
-Do not commit `.env` or expose API keys.
-
-### 4. Prepare the research data
-
-Place the required research PDFs in the expected location under `backend/data/papers/`.
-
-If the processed chunks and vector database are not already available, run the project's ingestion and indexing scripts to generate them. Use the commands and file names defined in the current source code.
-
-### 5. Start the backend
+Install the Python dependencies:
 
 ```powershell
-cd backend
-python -m uvicorn src.api.main:app --reload
+uv sync
 ```
 
-The API should be available at:
+## Start the application
 
-* API: `http://127.0.0.1:8000`
-* Interactive API documentation: `http://127.0.0.1:8000/docs`
-
-### 6. Start the frontend
-
-Open a second terminal:
+Start the backend in one terminal:
 
 ```powershell
-cd frontend
-npm install
+cd D:\Projects\Nerivane\backend
+uv run python run_api.py
+```
+
+FastAPI listens at `http://127.0.0.1:8000`. The API docs are at `http://127.0.0.1:8000/docs`; health check is `http://127.0.0.1:8000/api/health`.
+
+At startup, FastAPI loads and warms `sentence-transformers/all-MiniLM-L6-v2` before accepting requests. The first startup downloads the model if it is not in the Hugging Face cache, so it may take longer and needs network access. After startup, paper-query embeddings reuse the in-memory model.
+
+Start the frontend in a second terminal:
+
+```powershell
+cd D:\Projects\Nerivane\frontend\react_app
+npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite in your terminal.
+Open the Vite URL printed in the terminal, usually `http://localhost:5173`. Vite proxies `/api` requests to the FastAPI server at `127.0.0.1:8000`. Run `npm ci` when setting up or refreshing dependencies; start the frontend with `npm run dev`.
 
-## API
+## Chat API
 
-### `GET /`
-
-Returns a basic API response.
-
-### `GET /health`
-
-Checks the API health endpoint.
-
-### `POST /api/query`
-
-Submits a natural-language question to the assistant.
-
-Example request:
+`POST /api/chat` accepts a JSON request such as:
 
 ```json
 {
-  "query": "What mechanisms drive ENSO?"
+  "query": "What do the papers say about ocean temperature profiles?",
+  "paper_limit": 5,
+  "publication_year_from": 2018,
+  "publication_year_to": 2024,
+  "verify_citations": false
 }
 ```
 
-The response includes the selected route, generated answer, paper evidence, and data evidence where applicable.
+The year fields are optional and filter paper retrieval. `verify_citations` is optional and defaults to `false`; setting it to `true` may add one Groq call when there is evidence to check. The response includes the selected route, answer, retrieved paper chunks and grouped references, source errors, citation warnings, and optional claim-check findings.
 
-## Future Improvements
+## Ingest papers
 
-* Expand the research corpus and evaluate retrieval on a larger, more diverse set of questions.
-* Improve latency and measure the contribution of each pipeline stage.
-* Add more robust answer-quality and faithfulness evaluation.
-* Improve handling of conflicting evidence across papers.
-* Deploy the frontend and backend for public access.
-* Add user-facing source inspection and richer research workflows.
+From `backend`, edit `QUERY` and `LIMIT` in `run_ingestion.py` if needed, then run:
 
-## License
+```powershell
+uv run python run_ingestion.py
+```
 
-Will be updated soon.
+OpenAlex search filters for works marked open access with full text available. The downloader tries OpenAlex-provided PDF URLs; some papers may still have no accessible direct PDF. PDFs are saved in `backend/data/raw_pdfs/`. Extracted chunks and embeddings are stored in the local Chroma database at `backend/data/chroma_db/`, with progress recorded in `backend/data/processed_papers.json`.
+
+## Other commands
+
+Run the interactive research agent:
+
+```powershell
+cd D:\Projects\Nerivane\backend
+uv run python run_query_agent.py
+```
+
+Run the raw ocean data agent:
+
+```powershell
+uv run python run_data_agent.py
+```
+
+Open the dataset inspection notebooks using the backend environment:
+
+```powershell
+uv run jupyter lab ..\notebooks
+```
+
+## Retrieval and citation notes
+
+- Dense paper retrieval uses the same local MiniLM model used during ingestion; BM25 keyword ranks are fused with dense results.
+- Retrieval prefers up to two chunks per paper, then fills remaining result slots when fewer papers are available.
+- Citation labels and page numbers are checked against the retrieved chunks. This catches unknown labels and pages but does not prove that an excerpt supports a claim.
+- The optional claim-support check asks the Groq model to classify claims as supported, unsupported, or unclear. Treat this as a review aid.
+- Newly ingested chunks store structured author names, venue, and landing-page URL. Existing chunks without those fields fall back to their previously stored metadata, DOI, or OpenAlex work URL.
