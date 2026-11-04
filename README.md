@@ -2,6 +2,8 @@
 
 A local research assistant for querying the ocean Q1 2020 master dataset and an indexed collection of research papers. A Groq-backed router selects `data`, `paper`, `both`, or `none`. Paper retrieval combines local Hugging Face embeddings and BM25 keyword search; data questions use tools over the master Zarr dataset.
 
+For the full workflow walkthrough and file/function reference, see [the project guide](docs/PROJECT_GUIDE.md).
+
 ## How a chat request works
 
 1. The React app sends a question to FastAPI.
@@ -29,10 +31,13 @@ These are logical Groq model invocations per question, not counting transient HT
 
 The data agent can select several Python tools during one model turn; those tool executions are not additional LLM calls. It allows up to three tool-producing rounds. It may make a fourth model call to decide it is finished or hit the round limit, so the maximum is four data-agent calls. The optional support check only runs on `paper` and `both` routes. It adds one call when paper sources or a data-agent result are present; it is skipped when there are no paper sources and `raw_data_output` is `None`.
 
+Dashboard source selection explicitly chooses Papers, Dataset, or Both, so that path skips the router call. Papers then uses one final-answer call; Dataset uses one to four data-agent calls plus one final call; Both adds paper retrieval locally and follows the Dataset call count. Normal Research Assistant chat uses automatic routing.
+
 ## Project layout
 
 ```text
 backend/                 FastAPI app, agents, ingestion, and data tools
+docs/                    Detailed workflows and file/function reference
 data/                    Local ocean datasets (ignored by Git)
 frontend/react_app/      React + Vite chat frontend
 notebooks/               Dataset inspection notebooks
@@ -118,7 +123,7 @@ From `backend`, edit `QUERY` and `LIMIT` in `run_ingestion.py` if needed, then r
 uv run python run_ingestion.py
 ```
 
-OpenAlex search filters for works marked open access with full text available. The downloader tries OpenAlex-provided PDF URLs; some papers may still have no accessible direct PDF. PDFs are saved in `backend/data/raw_pdfs/`. Extracted chunks and embeddings are stored in the local Chroma database at `backend/data/chroma_db/`, with progress recorded in `backend/data/processed_papers.json`.
+OpenAlex search filters for works marked open access with full text available. The downloader tries OpenAlex-provided PDF URLs; some papers may still have no accessible direct PDF. PDFs are saved in `backend/data/raw_pdfs/`. Extracted chunks and embeddings are stored in the local Chroma database at `backend/data/chroma_db/`, with progress recorded in `backend/data/processed_papers.json`. The Paper Library navigation currently opens a placeholder page; indexed papers remain available to the Research Assistant through retrieval.
 
 ## Other commands
 

@@ -46,6 +46,7 @@ const iconPaths = {
   about: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.3 2.3 0 1 1 4.3 1.2c-.8 1.1-2.1 1.3-2.1 3M12 16.8h.01" /></>,
   menu: <><path d="M4 6h16M4 12h16M4 18h16" /></>,
   collapse: <><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M9 4v16M14 9l-3 3 3 3" /></>,
+  expand: <><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M9 4v16M13 9l3 3-3 3" /></>,
   search: <><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4.5 4.5" /></>,
   plus: <><path d="M12 5v14M5 12h14" /></>,
   close: <><path d="m6 6 12 12M18 6 6 18" /></>,
@@ -81,11 +82,11 @@ export default function ApplicationShell({ children, currentPath, navigate, coll
     <button className="sidebar-scrim" type="button" aria-label="Close navigation" onClick={onCloseMobile} />
     <aside className="app-sidebar" aria-label="Main navigation">
       <div className="sidebar-brand-row">
-        <a className="sidebar-brand" href="/" aria-label="Nerivane home" onClick={(event) => { event.preventDefault(); navigate('/'); onCloseMobile() }}>
+        <a className="sidebar-brand" href="/" aria-label={collapsed ? 'Expand sidebar' : 'Nerivane home'} title={collapsed ? 'Expand sidebar' : undefined} onClick={(event) => { event.preventDefault(); if (collapsed) { onToggleCollapsed(); return } navigate('/'); onCloseMobile() }}>
           <span className="nerivane-mark" aria-hidden="true"><span /></span>{!collapsed && <span className="sidebar-brand-name">Nerivane</span>}
         </a>
         <button className="icon-button sidebar-close" type="button" aria-label="Close navigation" onClick={onCloseMobile}><Icon name="close" /></button>
-        <button className="icon-button collapse-button" type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={onToggleCollapsed}><Icon name="collapse" /></button>
+        <button className="icon-button collapse-button" type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={onToggleCollapsed}><Icon name={collapsed ? 'expand' : 'collapse'} /></button>
       </div>
       <div className="sidebar-scroll-area">
         <button className="new-chat-button" type="button" onClick={onNewChat} title={collapsed ? 'New chat' : undefined} disabled={busy}><Icon name="plus" />{!collapsed && <span>New Chat</span>}</button>
