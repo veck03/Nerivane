@@ -17,7 +17,12 @@ def _tokens(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
-def retrieve_paper_chunks(query: str, limit: int = 5) -> list[dict]:
+def retrieve_paper_chunks(
+    query: str,
+    limit: int = 5,
+    publication_year_from: int | None = None,
+    publication_year_to: int | None = None,
+) -> list[dict]:
     """Return ranked paper chunks by reciprocal-rank-fused dense and BM25 search.
 
     Dense search embeds the query with the same local model used during
@@ -29,24 +34,42 @@ def retrieve_paper_chunks(query: str, limit: int = 5) -> list[dict]:
         raise ValueError("Enter a query for paper retrieval.")
     if limit < 1:
         raise ValueError("limit must be at least 1")
+    if (
+        publication_year_from is not None
+        and publication_year_to is not None
+        and publication_year_from > publication_year_to
+    ):
+        raise ValueError("publication_year_from cannot be later than publication_year_to")
 
     collection = get_collection(CHROMA_DIR)
-    total_chunks = collection.count()
-    if total_chunks == 0:
+    year_conditions = []
+    if publication_year_from is not None:
+        year_conditions.append({"publication_year": {"$gte": publication_year_from}})
+    if publication_year_to is not None:
+        year_conditions.append({"publication_year": {"$lte": publication_year_to}})
+    if publication_year_to is not None and publication_year_from is None:
+        year_conditions.append({"publication_year": {"$gt": 0}})
+    where = (
+        {"$and": year_conditions}
+        if len(year_conditions) > 1
+        else year_conditions[0] if year_conditions else None
+    )
+
+    corpus = collection.get(where=where, include=["documents", "metadatas"])
+    ids = corpus.get("ids", [])
+    documents = corpus.get("documents", [])
+    metadatas = corpus.get("metadatas", [])
+    total_chunks = len(ids)
+    if not total_chunks:
         return []
 
     query_embedding = create_embeddings([query], EMBEDDING_MODEL)[0]
     dense = collection.query(
         query_embeddings=[query_embedding],
         n_results=min(total_chunks, max(limit * 4, 20)),
+        where=where,
         include=["documents", "metadatas", "distances"],
     )
-    corpus = collection.get(include=["documents", "metadatas"])
-    ids = corpus.get("ids", [])
-    documents = corpus.get("documents", [])
-    metadatas = corpus.get("metadatas", [])
-    if not ids:
-        return []
 
     records = {
         record_id: {
@@ -80,7 +103,25 @@ def retrieve_paper_chunks(query: str, limit: int = 5) -> list[dict]:
             fused_scores[record_id] += 1 / (RRF_CONSTANT + lexical_rank)
             matched_by[record_id].add("keyword")
 
-    ranked_ids = sorted(fused_scores, key=fused_scores.get, reverse=True)[:limit]
+    all_ranked_ids = sorted(fused_scores, key=fused_scores.get, reverse=True)
+    # Prefer up to two chunks per paper, then use remaining slots as needed.
+    # This diversifies normal results without returning too few chunks when the
+    # corpus has only one matching paper.
+    ranked_ids = []
+    deferred_ids = []
+    paper_counts: dict[str, int] = defaultdict(int)
+    for record_id in all_ranked_ids:
+        metadata = records[record_id]["metadata"]
+        paper_id = str(metadata.get("paper_id") or record_id)
+        if paper_counts[paper_id] < 2:
+            ranked_ids.append(record_id)
+            paper_counts[paper_id] += 1
+        else:
+            deferred_ids.append(record_id)
+        if len(ranked_ids) >= limit:
+            break
+    if len(ranked_ids) < limit:
+        ranked_ids.extend(deferred_ids[:limit - len(ranked_ids)])
     return [
         {
             "chunk_id": record_id,

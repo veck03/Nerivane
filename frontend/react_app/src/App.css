@@ -206,6 +206,82 @@
 
 .message-failed { border-color: #f0d3ca; background: #fff8f5; }
 .source-note { margin: 7px 2px 0; color: #8d7470; font-size: 11px; }
+.citation-warning { margin: 8px 2px 0; color: #906c37; font-size: 11px; line-height: 1.5; }
+.inline-citation { margin-inline: 1px; color: #08796e; font-weight: 700; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+.inline-citation:hover { color: #064f4b; }
+.claim-check-panel { margin: 9px 2px 0; color: #718780; font-size: 9px; }
+.claim-check-panel > p { margin: 0 0 6px; }
+.claim-check-note { margin: 8px 2px 0; color: #788986; font-size: 10px; }
+.claim-checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.claim-checks li { display: grid; grid-template-columns: auto 1fr; gap: 5px 8px; align-items: baseline; color: #63777b; font-size: 10px; line-height: 1.45; }
+.claim-checks small { grid-column: 2; color: #869692; font-size: 9px; }
+.claim-status { padding: 2px 5px; border-radius: 5px; font-size: 8px; font-weight: 750; text-transform: uppercase; }
+.claim-status.supported { color: #176b54; background: #e2f3ea; }
+.claim-status.unsupported { color: #983f36; background: #fbe9e5; }
+.claim-status.unclear { color: #896723; background: #f7f0d9; }
+
+.source-panel {
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px solid #e0e9e5;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.source-panel-header, .source-actions, .source-title-row {
+  display: flex;
+  align-items: center;
+}
+.source-panel-header { justify-content: space-between; gap: 12px; }
+.source-panel-header > strong { color: #355158; font-size: 11px; letter-spacing: .35px; }
+.source-actions { gap: 7px; }
+.source-actions button {
+  padding: 5px 8px;
+  border: 1px solid #d9e6e1;
+  border-radius: 7px;
+  color: #42665f;
+  background: white;
+  cursor: pointer;
+  font-size: 10px;
+}
+.source-actions button:hover { border-color: #8dc5b8; color: #075e58; }
+.source-list { margin: 10px 0 0; padding: 0; list-style: none; }
+.source-card { padding: 10px 0; border-top: 1px solid #e9efed; scroll-margin-top: 24px; }
+.source-title-row { flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.source-title-row a { color: #176f69; font-weight: 650; text-decoration: none; }
+.source-title-row a:hover { text-decoration: underline; }
+.source-title-row strong { color: #315057; font-weight: 650; }
+.source-id { color: #79908d; font-size: 10px; font-weight: 700; }
+.cited-tag { padding: 2px 6px; border-radius: 999px; color: #0a6b5c; background: #e4f3ed; font-size: 9px; font-weight: 700; }
+.source-meta { margin: 4px 0 0; color: #7a8d8b; font-size: 10px; line-height: 1.5; }
+.source-excerpt { margin-top: 7px; color: #53676b; font-size: 11px; }
+.source-excerpt summary { width: fit-content; color: #397d75; cursor: pointer; }
+.source-excerpt p { margin: 7px 0 0; line-height: 1.6; white-space: pre-wrap; }
+
+.paper-filters {
+  min-height: 32px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #718780;
+  font-size: 10px;
+}
+.paper-filters > span:first-child { font-weight: 700; }
+.paper-filters input {
+  width: 72px;
+  padding: 5px 7px;
+  border: 1px solid #dce7e2;
+  border-radius: 7px;
+  color: #30464c;
+  background: #fff;
+  font: inherit;
+  font-size: 10px;
+}
+.filter-separator { color: #9aa9a7; }
+.filter-hint { margin-left: auto; color: #9aa9a7; }
+.verify-option { display: inline-flex; align-items: center; gap: 5px; color: #718780; cursor: pointer; }
+.verify-option input { accent-color: #0a766d; }
 
 .typing-indicator {
   height: 42px;
@@ -320,4 +396,8 @@
   .message-content { max-width: 90%; }
   .message-bubble { padding: 12px 14px; font-size: 13px; }
   .composer-area { padding-bottom: 14px; }
+  .source-panel { padding: 10px; }
+  .source-panel-header { align-items: flex-start; flex-direction: column; }
+  .paper-filters { flex-wrap: wrap; }
+  .filter-hint { flex-basis: 100%; margin-left: 0; }
 }

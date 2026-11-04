@@ -11,6 +11,14 @@ def _get_embedding_model(model: str) -> HuggingFaceEmbeddings:
     return HuggingFaceEmbeddings(model_name=model)
 
 
+def load_embedding_model(model: str) -> None:
+    """Load and warm the embedding model before the API accepts requests."""
+    embedding_model = _get_embedding_model(model)
+    # Run one small inference during startup so the first user query avoids
+    # model initialization and inference warm-up costs.
+    embedding_model.embed_documents(["Ocean research embedding warm-up."])
+
+
 def create_embeddings(texts: list[str], model: str) -> list[list[float]]:
     """Embed chunk strings locally and return vectors in matching order."""
     return _get_embedding_model(model).embed_documents(texts)

@@ -70,12 +70,22 @@ def search_papers(query: str, limit: int, mail_to: str | None = None) -> list[di
             author.get("author", {}).get("display_name", "")
             for author in work.get("authorships", [])
         ]
+        primary_location = work.get("primary_location") or {}
+        best_oa_location = work.get("best_oa_location") or {}
+        primary_source = primary_location.get("source") or {}
+        best_source = best_oa_location.get("source") or {}
         papers.append({
             "paper_id": work_id,
             "title": work.get("title") or "Untitled",
             "authors": [name for name in authors if name],
             "publication_year": work.get("publication_year"),
             "doi": work.get("doi"),
+            "venue": primary_source.get("display_name") or best_source.get("display_name"),
+            "paper_url": (
+                best_oa_location.get("landing_page_url")
+                or primary_location.get("landing_page_url")
+                or work_id
+            ),
             "abstract": _abstract_from_inverted_index(work.get("abstract_inverted_index")),
             "pdf_urls": _pdf_urls(work),
         })
