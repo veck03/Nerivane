@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
+import { Icon } from './components/ApplicationShell.jsx'
+import ApplicationShell from './components/ApplicationShell.jsx'
+import DashboardPage from './components/DashboardPage.jsx'
+import EvidenceInspector from './components/EvidenceInspector.jsx'
+import MarkdownAnswer from './components/MarkdownAnswer.jsx'
+import PlaceholderPage from './components/PlaceholderPage.jsx'
 
 const starterQuestions = [
   'What is the average sea surface temperature in January?',
@@ -14,23 +20,8 @@ const routeLabels = {
   none: 'General answer',
 }
 
-function renderAnswerWithCitations(text, sources, messageId) {
-  const sourceById = new Map(sources.map((source) => [source.source_id, source]))
-  return text.split(/(\[S\d+(?:,\s*p\.?\s*\d+)?\])/gi).map((part, index) => {
-    const match = part.match(/^\[(S\d+)(?:,\s*p\.?\s*(\d+))?\]$/i)
-    const source = match ? sourceById.get(match[1].toUpperCase()) : null
-    if (!source) return part
-    return (
-      <a
-        className="inline-citation"
-        href={`#source-${messageId}-${source.source_id}`}
-        key={`${part}-${index}`}
-        title={`Open ${source.title}${match[2] ? `, page ${match[2]}` : ''}`}
-      >
-        {part}
-      </a>
-    )
-  })
+function normalizePath(path) {
+  return path === '/research-assistant' ? '/' : path
 }
 
 function downloadBibtex(sources) {
@@ -56,13 +47,103 @@ function App() {
   const [yearTo, setYearTo] = useState('')
   const [verifyCitations, setVerifyCitations] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState(null)
+  const [currentPath, setCurrentPath] = useState(() => normalizePath(window.location.pathname || '/'))
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [activeConversationId, setActiveConversationId] = useState(() => Date.now())
+  const [conversations, setConversations] = useState([])
+  const [shareStatus, setShareStatus] = useState('')
+  const [inspectorOpen, setInspectorOpen] = useState(() => window.matchMedia('(min-width: 1181px)').matches)
+  const [inspectorTab, setInspectorTab] = useState('sources')
+  const [evidenceMessageId, setEvidenceMessageId] = useState(null)
+  const [selectedSourceId, setSelectedSourceId] = useState(null)
+  const [selectedChunkIndex, setSelectedChunkIndex] = useState(null)
+  const [citationRequestId, setCitationRequestId] = useState(0)
   const bottomRef = useRef(null)
+  const queryInputRef = useRef(null)
+  const messageIdRef = useRef(0)
+
+  useEffect(() => {
+    const updatePath = () => setCurrentPath(normalizePath(window.location.pathname || '/'))
+    window.addEventListener('popstate', updatePath)
+    return () => window.removeEventListener('popstate', updatePath)
+  }, [])
+
+  function navigate(path) {
+    const nextPath = normalizePath(path)
+    if (window.location.pathname !== nextPath) window.history.pushState({}, '', nextPath)
+    setCurrentPath(nextPath)
+  }
+
+  function startNewChat() {
+    if (messages.length) {
+      const current = {
+        id: activeConversationId,
+        title: messages.find((message) => message.role === 'user')?.text.slice(0, 56) || 'Research conversation',
+        messages,
+        updatedAt: messages.at(-1)?.createdAt || null,
+      }
+      setConversations((existing) => [current, ...existing.filter((conversation) => conversation.id !== current.id)])
+    }
+    setMessages([])
+    setQuery('')
+    setError('')
+    setActiveConversationId(Date.now())
+    setEvidenceMessageId(null)
+    setSelectedSourceId(null)
+    setSelectedChunkIndex(null)
+    setInspectorTab('sources')
+    navigate('/')
+    setMobileSidebarOpen(false)
+  }
+
+  function selectConversation(conversationId) {
+    const current = messages.length ? {
+      id: activeConversationId,
+      title: messages.find((message) => message.role === 'user')?.text.slice(0, 56) || 'Research conversation',
+      messages,
+      updatedAt: messages.at(-1)?.createdAt || null,
+    } : null
+    const candidates = current ? [current, ...conversations] : conversations
+    const selected = candidates.find((conversation) => conversation.id === conversationId)
+    if (!selected) return
+    if (current) setConversations((existing) => [current, ...existing.filter((conversation) => conversation.id !== current.id)])
+    setMessages(selected.messages)
+    setActiveConversationId(selected.id)
+    const latestAssistant = [...selected.messages].reverse().find((message) => message.role === 'assistant')
+    setEvidenceMessageId(latestAssistant?.messageId ?? null)
+    setSelectedSourceId(latestAssistant?.paperSources?.[0]?.source_id ?? null)
+    setSelectedChunkIndex(null)
+    setQuery('')
+    setError('')
+    navigate('/')
+  }
+
+  const latestAssistantPreview = [...messages].reverse().find((message) => message.role === 'assistant')?.text
+  const currentConversation = messages.length ? {
+    id: activeConversationId,
+    title: messages.find((message) => message.role === 'user')?.text.slice(0, 56) || 'Research conversation',
+    preview: (latestAssistantPreview || messages.at(-1)?.text || '').replace(/\s+/g, ' ').trim(),
+    messages,
+    updatedAt: messages.at(-1)?.createdAt || null,
+  } : null
+  const recentConversations = currentConversation
+    ? [currentConversation, ...conversations.filter((conversation) => conversation.id !== currentConversation.id)]
+    : conversations
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, loading])
 
-  async function sendMessage(value = query) {
+  useEffect(() => {
+    const input = queryInputRef.current
+    if (!input) return
+    input.style.height = 'auto'
+    input.style.height = `${Math.min(input.scrollHeight, 180)}px`
+    input.style.overflowY = input.scrollHeight > 180 ? 'auto' : 'hidden'
+  }, [query])
+
+  async function sendMessage(value = query, sourceMode = null) {
     const text = value.trim()
     if (!text || loading) return
     if (yearFrom && yearTo && Number(yearFrom) > Number(yearTo)) {
@@ -70,17 +151,23 @@ function App() {
       return
     }
 
-    setMessages((current) => [...current, { role: 'user', text }])
+    setMessages((current) => [...current, { role: 'user', text, createdAt: new Date().toISOString() }])
     setQuery('')
     setError('')
     setLoading(true)
 
     try {
+      const sourceDirective = {
+        papers: '[[NERIVANE_SOURCE_MODE:PAPERS]]',
+        dataset: '[[NERIVANE_SOURCE_MODE:DATASET]]',
+        both: '[[NERIVANE_SOURCE_MODE:BOTH]]',
+      }[sourceMode]
+      const requestQuery = sourceDirective ? `${sourceDirective}\n${text}` : text
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: text,
+          query: requestQuery,
           ...(yearFrom ? { publication_year_from: Number(yearFrom) } : {}),
           ...(yearTo ? { publication_year_to: Number(yearTo) } : {}),
           verify_citations: verifyCitations,
@@ -92,20 +179,25 @@ function App() {
         throw new Error(result.detail || `Request failed (${response.status})`)
       }
 
-      setMessages((current) => [
-        ...current,
-        {
+      const assistantMessage = {
           role: 'assistant',
           text: result.answer,
+          createdAt: new Date().toISOString(),
           route: result.route,
           sourceErrors: result.source_errors,
           paperSources: result.paper_sources || [],
+          paperChunks: result.paper_chunks || [],
+          rawDataOutput: result.raw_data_output ?? null,
           citationWarnings: result.citation_warnings || [],
           claimChecks: result.claim_checks || [],
           claimCheckStatus: result.claim_check_status || 'not_requested',
-          messageId: Date.now(),
-        },
-      ])
+          messageId: ++messageIdRef.current,
+        }
+      setMessages((current) => [...current, assistantMessage])
+      setEvidenceMessageId(assistantMessage.messageId)
+      setSelectedSourceId(assistantMessage.paperSources[0]?.source_id ?? null)
+      setSelectedChunkIndex(null)
+      setInspectorTab(assistantMessage.paperSources.length ? 'sources' : assistantMessage.rawDataOutput ? 'dataset' : 'details')
     } catch (requestError) {
       const message = requestError instanceof TypeError
         ? 'Could not reach the backend. Make sure FastAPI is running on port 8000.'
@@ -113,7 +205,7 @@ function App() {
       setError(message)
       setMessages((current) => [
         ...current,
-        { role: 'assistant', text: `I couldn’t complete that request. ${message}`, failed: true },
+        { role: 'assistant', text: `I couldn’t complete that request. ${message}`, failed: true, createdAt: new Date().toISOString() },
       ])
     } finally {
       setLoading(false)
@@ -125,16 +217,122 @@ function App() {
     sendMessage()
   }
 
-  return (
-    <main className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="/" aria-label="Ocean Research home">
-          <span className="brand-mark" aria-hidden="true">≈</span>
-          <span>Ocean Research</span>
-        </a>
-        <span className="connection-label"><span className="status-dot" /> Research assistant</span>
-      </header>
+  function startResearchFromDashboard(text, sourceMode) {
+    if (loading) return
+    startNewChat()
+    sendMessage(text, sourceMode)
+  }
 
+  function handleCitationClick(source, page, messageId) {
+    const message = messages.find((item) => item.messageId === messageId)
+    const excerpts = source.excerpts || []
+    const chunkIndex = page == null ? 0 : excerpts.findIndex((excerpt) => Number(excerpt.page_number) === page)
+    setEvidenceMessageId(message?.messageId ?? messageId)
+    setSelectedSourceId(source.source_id)
+    setSelectedChunkIndex(chunkIndex >= 0 && excerpts.length ? chunkIndex : excerpts.length ? 0 : null)
+    setCitationRequestId((current) => current + 1)
+    setInspectorTab('sources')
+    setInspectorOpen(true)
+  }
+
+  function selectEvidenceSource(source) {
+    setSelectedSourceId((current) => current === source.source_id ? null : source.source_id)
+    setSelectedChunkIndex(null)
+  }
+
+  async function copyReferences(message) {
+    const sources = message?.paperSources || []
+    if (!sources.length) return
+    const citedReferences = sources.filter((source) => source.cited).map((source) => source.reference)
+    const references = (citedReferences.length ? citedReferences : sources.map((source) => source.reference)).join('\n')
+    try {
+      await navigator.clipboard.writeText(references)
+      setCopiedMessage(message.messageId)
+    } catch {
+      setError('Clipboard access is unavailable in this browser.')
+    }
+  }
+
+  function conversationText() {
+    return messages.map((message) => `${message.role === 'user' ? 'You' : 'Nerivane'}:\n${message.text}`).join('\n\n')
+  }
+
+  async function shareConversation() {
+    if (!messages.length) return
+    const text = conversationText()
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: conversationTitle, text })
+        setShareStatus('Shared')
+      } else {
+        await navigator.clipboard.writeText(text)
+        setShareStatus('Copied')
+      }
+    } catch (shareError) {
+      if (shareError.name !== 'AbortError') setError('Sharing is unavailable in this browser.')
+    }
+    window.setTimeout(() => setShareStatus(''), 1800)
+  }
+
+  async function copyConversation() {
+    if (!messages.length) return
+    try {
+      await navigator.clipboard.writeText(conversationText())
+      setShareStatus('Copied')
+      window.setTimeout(() => setShareStatus(''), 1800)
+    } catch {
+      setError('Clipboard access is unavailable in this browser.')
+    }
+  }
+
+  const firstQuestion = messages.find((message) => message.role === 'user')?.text
+  const conversationTitle = firstQuestion
+    ? `${firstQuestion.slice(0, 66)}${firstQuestion.length > 66 ? '…' : ''}`
+    : 'New research conversation'
+  const latestRoute = [...messages].reverse().find((message) => message.role === 'assistant' && message.route)?.route
+  const latestAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant')
+  const evidenceMessage = messages.find((message) => message.messageId === evidenceMessageId) || latestAssistantMessage
+
+  return (
+    <ApplicationShell
+      currentPath={currentPath}
+      navigate={navigate}
+      collapsed={sidebarCollapsed}
+      onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
+      mobileOpen={mobileSidebarOpen}
+      onToggleMobile={() => setMobileSidebarOpen((open) => !open)}
+      onCloseMobile={() => setMobileSidebarOpen(false)}
+      conversations={recentConversations}
+      activeConversationId={activeConversationId}
+      onNewChat={startNewChat}
+      onSelectConversation={selectConversation}
+      busy={loading}
+    >
+      {currentPath === '/dashboard' ? <DashboardPage conversations={recentConversations} onStartResearch={startResearchFromDashboard} onOpenConversation={selectConversation} loading={loading} />
+        : currentPath === '/' ? <div className="research-assistant-page">
+      <header className="conversation-header">
+        <div className="assistant-header-left">
+          <button className="icon-button mobile-menu-button" type="button" aria-label="Open navigation" onClick={() => setMobileSidebarOpen((open) => !open)}><Icon name="menu" /></button>
+          <div className="conversation-title-block">
+            <span className="conversation-eyebrow">NERIVANE WORKSPACE / RESEARCH ASSISTANT</span>
+            <h2 title={conversationTitle}>{conversationTitle}</h2>
+          </div>
+        </div>
+        <div className="conversation-tools">
+          <div className="topbar-status"><span className="status-dot" /><span>Research assistant</span></div>
+          <div className="source-routing-indicator" title="The router chooses data, papers, both, or a general response for each question.">
+            <span className="routing-dot" />
+            <span>Auto routing</span>
+            {latestRoute && <span className="routing-divider">·</span>}
+            {latestRoute && <strong>{routeLabels[latestRoute] || latestRoute}</strong>}
+          </div>
+          <button className={`conversation-action evidence-toggle${inspectorOpen ? ' is-active' : ''}`} type="button" aria-expanded={inspectorOpen} aria-controls="evidence-inspector" onClick={() => setInspectorOpen((open) => !open)}><Icon name="papers" /><span>Evidence</span></button>
+          <button className="conversation-action" type="button" onClick={shareConversation} disabled={!messages.length} title="Share conversation">{shareStatus === 'Shared' ? 'Shared' : <><Icon name="shared" /><span>Share</span></>}</button>
+          <button className="conversation-action conversation-copy-action" type="button" onClick={copyConversation} disabled={!messages.length} title="Copy conversation transcript">{shareStatus === 'Copied' ? 'Copied' : 'Copy transcript'}</button>
+        </div>
+      </header>
+      <div className="research-workspace">
+      <div className="conversation-column">
       <section className={`chat ${messages.length ? 'chat-active' : ''}`} aria-label="Chat">
         {messages.length === 0 ? (
           <div className="welcome">
@@ -160,7 +358,7 @@ function App() {
                   )}
                   <div className={`message-bubble ${message.failed ? 'message-failed' : ''}`}>
                     {message.role === 'assistant'
-                      ? renderAnswerWithCitations(message.text, message.paperSources || [], message.messageId)
+                      ? <MarkdownAnswer text={message.text} sources={message.paperSources || []} messageId={message.messageId} onCitationClick={handleCitationClick} />
                       : message.text}
                   </div>
                   {message.role === 'assistant' && message.citationWarnings?.length > 0 && (
@@ -191,60 +389,6 @@ function App() {
                   {message.role === 'assistant' && message.claimCheckStatus === 'completed' && message.claimChecks?.length === 0 && (
                     <p className="claim-check-note">The optional support check completed; it returned no claim findings.</p>
                   )}
-                  {message.role === 'assistant' && message.paperSources?.length > 0 && (
-                    <section className="source-panel" aria-label="Paper sources">
-                      <div className="source-panel-header">
-                        <strong>Paper sources</strong>
-                        <div className="source-actions">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const refs = message.paperSources
-                                .filter((source) => source.cited)
-                                .map((source) => source.reference)
-                              const text = (refs.length ? refs : message.paperSources.map((source) => source.reference)).join('\n')
-                              try {
-                                await navigator.clipboard.writeText(text)
-                                setCopiedMessage(message.messageId)
-                              } catch {
-                                setError('Clipboard access is unavailable in this browser.')
-                              }
-                            }}
-                          >
-                            {copiedMessage === message.messageId ? 'Copied' : 'Copy references'}
-                          </button>
-                          <button type="button" onClick={() => downloadBibtex(message.paperSources)}>
-                            Download BibTeX
-                          </button>
-                        </div>
-                      </div>
-                      <ul className="source-list">
-                        {message.paperSources.map((source) => (
-                          <li id={`source-${message.messageId}-${source.source_id}`} key={source.source_id} className="source-card">
-                            <div className="source-title-row">
-                              <span className="source-id">[{source.source_id}]</span>
-                              {source.paper_url ? (
-                                <a href={source.paper_url} target="_blank" rel="noreferrer">{source.title}</a>
-                              ) : <strong>{source.title}</strong>}
-                              {source.cited && <span className="cited-tag">Cited</span>}
-                            </div>
-                            <p className="source-meta">
-                              {source.authors || 'Unknown author'}
-                              {source.publication_year ? ` · ${source.publication_year}` : ''}
-                              {source.venue ? ` · ${source.venue}` : ''}
-                              {source.pages?.length ? ` · Pages ${source.pages.join(', ')}` : ''}
-                            </p>
-                            {source.excerpts?.[0]?.text && (
-                              <details className="source-excerpt">
-                                <summary>View retrieved excerpt</summary>
-                                <p>{source.excerpts[0].text}</p>
-                              </details>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  )}
                   {message.sourceErrors && Object.keys(message.sourceErrors).length > 0 && (
                     <p className="source-note">A source could not be retrieved. The answer may be incomplete.</p>
                   )}
@@ -264,7 +408,9 @@ function App() {
 
       <footer className="composer-area">
         {error && <p className="connection-error" role="status">{error}</p>}
-        <div className="paper-filters" aria-label="Paper publication year filter">
+        <div className="composer-context-row">
+          <span className="composer-routing-label"><span className="routing-dot" /> Sources selected automatically per question</span>
+          <div className="paper-filters" aria-label="Paper publication year filter">
           <span>Paper years</span>
           <label>
             <span className="sr-only">From publication year</span>
@@ -280,10 +426,12 @@ function App() {
             <input type="checkbox" checked={verifyCitations} onChange={(event) => setVerifyCitations(event.target.checked)} disabled={loading} />
             <span>Check claim support (extra model call)</span>
           </label>
+          </div>
         </div>
         <form className="composer" onSubmit={handleSubmit}>
           <label className="sr-only" htmlFor="chat-input">Your question</label>
           <textarea
+            ref={queryInputRef}
             id="chat-input"
             rows="1"
             value={query}
@@ -294,16 +442,33 @@ function App() {
                 handleSubmit(event)
               }
             }}
-            placeholder="Ask a question..."
+            placeholder="Ask a research question…"
             disabled={loading}
           />
           <button className="send-button" type="submit" disabled={loading || !query.trim()} aria-label="Send message">
-            {loading ? '…' : '↑'}
+            {loading ? <span className="send-loading" aria-hidden="true" /> : <Icon name="send" className="send-icon" />}
           </button>
         </form>
         <p className="composer-hint">Enter to send · Shift + Enter for a new line</p>
       </footer>
-    </main>
+      </div>
+      <EvidenceInspector
+        open={inspectorOpen}
+        activeTab={inspectorTab}
+        onSelectTab={setInspectorTab}
+        onClose={() => setInspectorOpen(false)}
+        message={evidenceMessage}
+        selectedSourceId={selectedSourceId}
+        selectedChunkIndex={selectedChunkIndex}
+        citationRequestId={citationRequestId}
+        onSelectSource={selectEvidenceSource}
+        onCopyReferences={copyReferences.bind(null, evidenceMessage)}
+        onDownloadBibtex={downloadBibtex}
+        copiedMessage={copiedMessage}
+      />
+      </div>
+      </div> : <PlaceholderPage path={currentPath} />}
+    </ApplicationShell>
   )
 }
 

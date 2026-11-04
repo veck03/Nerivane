@@ -5,6 +5,21 @@ from agents.ocean_data_agent import run_ocean_data_agent
 from agents.router_agent import route_query
 from retrieval import retrieve_paper_chunks
 
+SOURCE_MODE_DIRECTIVES = {
+    "[[NERIVANE_SOURCE_MODE:PAPERS]]": "paper",
+    "[[NERIVANE_SOURCE_MODE:DATASET]]": "data",
+    "[[NERIVANE_SOURCE_MODE:BOTH]]": "both",
+}
+
+
+def _extract_source_mode(query: str) -> tuple[str | None, str]:
+    """Read a dashboard source preference and return the user query without it."""
+    normalized = query.strip()
+    for directive, route in SOURCE_MODE_DIRECTIVES.items():
+        if normalized.upper().startswith(directive):
+            return route, normalized[len(directive):].strip()
+    return None, normalized
+
 
 def answer_query(
     query: str,
@@ -14,10 +29,11 @@ def answer_query(
     verify_citations: bool = False,
 ) -> dict:
     """Route a query, run only its selected source agents, and synthesize."""
-    if not query.strip():
+    source_mode, query = _extract_source_mode(query)
+    if not query:
         raise ValueError("Enter a question.")
 
-    route = route_query(query)
+    route = source_mode or route_query(query)
     raw_data_output = None
     paper_chunks = []
     source_errors: dict[str, str] = {}
