@@ -7,6 +7,7 @@ import EvidenceInspector from './components/EvidenceInspector.jsx'
 import DatasetCharts from './components/DatasetCharts.jsx'
 import MarkdownAnswer from './components/MarkdownAnswer.jsx'
 import PlaceholderPage from './components/PlaceholderPage.jsx'
+import AboutDeveloper from './components/AboutDeveloper.jsx'
 
 const starterQuestions = [
   'Plot a chart of monthly mean sea surface temperature from January through March 2020.',
@@ -310,6 +311,7 @@ function App() {
       busy={loading}
     >
       {currentPath === '/dashboard' ? <DashboardPage conversations={recentConversations} onStartResearch={startResearchFromDashboard} onOpenConversation={selectConversation} loading={loading} />
+        : currentPath === '/about' ? <AboutDeveloper />
         : currentPath === '/' ? <div className="research-assistant-page">
       <header className="conversation-header">
         <div className="assistant-header-left">
