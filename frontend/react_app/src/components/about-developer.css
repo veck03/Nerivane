@@ -16,18 +16,20 @@
 .about-github:hover { background: #1e293b; }
 .about-linkedin { border-color: var(--color-primary-container) !important; color: var(--color-primary); background: var(--color-primary-light); }
 .about-linkedin:hover { background: #e0e7ff; }
+.about-portfolio { border-color: #dbe4ee !important; color: #334155; background: #f8fafc; }
+.about-portfolio:hover { background: #eef2f7; }
 .about-bio { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-subtle); }
 .about-bio h3, .about-skill-group h3 { margin: 0 0 8px; color: var(--content-muted); font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .about-bio p { max-width: 900px; margin: 0; color: #334155; font-size: 14px; line-height: 1.75; }
-.about-architecture { overflow: hidden; padding: clamp(23px, 3vw, 34px); border-radius: var(--radius-lg); color: #fff; background: linear-gradient(112deg, #1e1b4b, #0f172a 82%); box-shadow: 0 8px 20px rgba(15, 23, 42, .12); }
+.about-architecture { overflow: hidden; padding: clamp(22px, 2.7vw, 30px); border: 1px solid #dfe3f2; border-radius: var(--radius-lg); color: var(--content-primary); background: linear-gradient(112deg, #f0f1ff, #f7f9fc 82%); }
 .about-architecture-copy { max-width: 760px; }
-.about-architecture-kicker { color: #a5b4fc; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.about-architecture-kicker { color: #6966b5; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .about-architecture h2 { margin: 9px 0; font-size: clamp(19px, 3vw, 25px); letter-spacing: -.025em; }
-.about-architecture p { margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.7; }
+.about-architecture p { margin: 0; color: var(--content-secondary); font-size: 13px; line-height: 1.7; }
 .about-architecture-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 24px; }
-.about-architecture-steps article { min-height: 78px; padding: 14px; border: 1px solid rgba(255,255,255,.13); border-radius: var(--radius-md); background: rgba(255,255,255,.07); }
+.about-architecture-steps article { min-height: 78px; padding: 14px; border: 1px solid #e1e5f0; border-radius: var(--radius-md); background: rgba(255,255,255,.8); }
 .about-architecture-steps span, .about-architecture-steps strong { display: block; }
-.about-architecture-steps span { color: #a5b4fc; font-size: 10px; font-weight: 650; }
+.about-architecture-steps span { color: #6966b5; font-size: 10px; font-weight: 650; }
 .about-architecture-steps strong { margin-top: 7px; font-size: 12px; font-weight: 550; }
 .about-content-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(270px, 1fr); align-items: start; gap: 28px; }
 .about-projects, .about-sidebar-content, .about-sidebar-content section { display: grid; gap: 13px; }
@@ -47,6 +49,7 @@
 .about-project-card ul { display: grid; gap: 7px; margin: 0; padding-left: 17px; color: var(--content-secondary); font-size: 12px; line-height: 1.6; }
 .about-education-card { padding: 16px; }
 .about-education-card p { margin: 5px 0 12px; color: var(--color-primary); font-size: 11px; font-weight: 550; line-height: 1.5; }
+.about-academic-score { color: #4338ca; font-weight: 750; white-space: nowrap; }
 .about-education-card > div { display: flex; justify-content: space-between; gap: 10px; color: var(--content-muted); font-size: 9px; }
 .about-education-card > div span:last-child { text-align: right; }
 .about-skills-card { display: grid; gap: 17px; padding: 18px; }

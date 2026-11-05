@@ -7,11 +7,12 @@ const developer = {
   email: 'vansh.tomar.0306@gmail.com',
   linkedin: 'https://www.linkedin.com/in/vansh-tomar03/',
   github: 'https://github.com/veck03',
+  portfolio: 'https://veck03.github.io/portfolio/',
   about: 'Mathematics and Computing undergraduate with hands-on project experience in machine learning, scientific data processing, and LLM-powered retrieval systems. Interested in developing practical AI solutions, with a particular focus on agentic AI, deep learning, and geospatial applications.',
 }
 
 const education = [
-  { institution: 'Madhav Institute of Technology and Science', degree: 'B.Tech. in Mathematics and Computing (CGPA: 9.17)', location: 'Gwalior, India', period: 'Aug 2025 – Expected Aug 2029' },
+  { institution: 'Madhav Institute of Technology and Science', degree: 'B.Tech. in Mathematics and Computing CGPA: 9.17', location: 'Gwalior, India', period: 'Aug 2025 – Expected Aug 2029' },
   { institution: 'Swami Vivekananda Academy', degree: 'CBSE Class 12th PCM, Percentage: 91.8%', location: 'Gwalior, India', period: 'Apr 2023 – Jun 2024' },
 ]
 
@@ -48,6 +49,7 @@ export default function AboutDeveloper() {
         <div className="about-social-links">
           <a className="about-github" href={developer.github} target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
           <a className="about-linkedin" href={developer.linkedin} target="_blank" rel="noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
+          <a className="about-portfolio" href={developer.portfolio} target="_blank" rel="noreferrer">Portfolio <span aria-hidden="true">↗</span></a>
         </div>
       </div>
       <div className="about-bio"><h3>About & research motivation</h3><p>{developer.about}</p></div>
@@ -77,7 +79,7 @@ export default function AboutDeveloper() {
       </section>
       <aside className="about-sidebar-content">
         <section><SectionTitle>Education</SectionTitle><div className="about-education-list">{education.map((item) => <article className="about-education-card" key={item.institution}>
-          <h3>{item.institution}</h3><p>{item.degree}</p><div><span>{item.location}</span><span>{item.period}</span></div>
+          <h3>{item.institution}</h3><p>{item.degree.split(/(CGPA: 9\.17|91\.8%)/).map((part) => /^(CGPA: 9\.17|91\.8%)$/.test(part) ? <strong className="about-academic-score" key={part}>{part}</strong> : part)}</p><div><span>{item.location}</span><span>{item.period}</span></div>
         </article>)}</div></section>
         <section><SectionTitle>Technical competencies</SectionTitle><div className="about-skills-card">{skills.map((group) => <div className="about-skill-group" key={group.category}>
           <h3>{group.category}</h3><div className="about-tags">{group.items.map((skill) => <span key={skill}>{skill}</span>)}</div>
