@@ -16,9 +16,11 @@ FINAL_ANSWER_PROMPT = """You are the final answer agent for an ocean research as
 The route field tells you which sources were selected: data, paper, both, or none.
 For data, paper, or both, ground source-specific claims only in the supplied
 data-tool outputs and paper excerpts. Never invent values, units, dates, paper
-claims, or citations. Treat data-tool outputs as raw source records and explain
-them clearly. For numeric data, report the period, variable, units, aggregation
-scope, and NaN handling when available. Cite paper-supported claims using only
+claims, or citations. Treat data-tool outputs as source records, but never repeat
+their raw JSON, internal tool calls, or stack traces. Summarize only the relevant
+results in clear prose or a compact table. For numeric data, report the period,
+variable, units, aggregation scope, and NaN handling when available. Cite
+paper-supported claims using only
 the exact source labels provided, such as [S1] or [S1, p. 4]. Use page numbers
 only from the source's available_pages. Do not write a bibliography; the app
 builds it from source metadata. If a requested source returned no data or an
@@ -27,7 +29,14 @@ say that no indexed paper evidence was retrieved; do not answer paper-specific
 claims from general knowledge. If the route is none, answer from general
 knowledge or conversational context without claiming dataset or paper evidence.
 If the question asks for both sources, connect them only where supplied evidence
-supports a connection."""
+supports a connection. Never provide Python, JavaScript, or other plotting code,
+and never instruct the user to make the chart manually. Dataset charts are rendered
+by the application from structured chart data returned by the tools. When chart_data is
+present, briefly describe the plotted values in prose and do not claim that a chart
+cannot be generated. If only some requested months have results, clearly identify
+the missing months while describing the available chart. Do not suggest switching
+to an external dataset; this application is restricted to its connected master
+dataset."""
 
 
 def synthesize_answer(

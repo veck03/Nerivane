@@ -113,7 +113,7 @@ cd backend
 uv run python run_data_agent.py
 ```
 
-Its tools describe the dataset, retrieve measurements at a nearest grid point and exact date, or calculate monthly mean/minimum/maximum/standard deviation. The statistics are NaN-aware; area-wide means use cosine-of-latitude weights. The code intentionally opens only the configured master dataset path in `backend/src/tools/ocean_data.py`.
+Its tools describe the dataset, retrieve measurements at a nearest grid point and exact date, calculate monthly statistics, and return chart-ready multi-month or point-level daily series. The multi-month tool takes a month array and calls the existing single-month statistics function for each month; it is one data-agent tool invocation. Statistics are NaN-aware; area-wide monthly means use cosine-of-latitude weights. Daily point-series requests read one variable at one nearest grid point and are limited to 366 time steps. The code intentionally opens only the configured master dataset path in `backend/src/tools/ocean_data.py`.
 
 ### 3.5 Standalone research-agent console
 
@@ -232,6 +232,9 @@ ChromaDB, downloaded PDFs, the ingestion status file, and datasets are local/per
 | `tools/ocean_data.py:get_ocean_dataset_info()` | Returns variables, units, coordinate extents, depth levels, and time coverage. |
 | `tools/ocean_data.py:get_ocean_values_at_point()` | Selects the nearest spatial grid cell for an exact date and returns available values. |
 | `tools/ocean_data.py:get_monthly_statistics()` | Computes NaN-aware monthly statistics, optionally at a point/depth. |
+| `tools/ocean_data.py:get_monthly_statistics_for_months()` | Takes a month array, calls `get_monthly_statistics()` for each, and returns the monthly means as chart-ready data in one data-agent tool invocation. |
+| `tools/ocean_data.py:get_daily_average_series()` | Returns daily area-weighted means for a month (or selected days) as chart-ready line-series data; can instead return daily values at one selected point. |
+| `tools/ocean_data.py:get_ocean_daily_series_at_point()` | Returns up to 366 daily values for one variable at the nearest grid point, preserving missing values as nulls. |
 | `tools/ocean_data.py:_check_coordinates()`, `_finite_number()`, `_json_result()` | Validate spatial bounds and produce JSON-safe tool results. `OCEAN_DATA_TOOLS` is the tool list exposed to the data agent. |
 | `tools/__init__.py` | Exposes the dataset tool list to the agent. |
 
@@ -252,6 +255,7 @@ ChromaDB, downloaded PDFs, the ingestion status file, and datasets are local/per
 | `components/DashboardPage.jsx:DashboardPage()` | Dashboard welcome/search, source mode, suggestions, honest resource counts, and recent in-memory conversations. `submitQuery()` sends the selected mode; `relativeTime()` and `conversationPreview()` format recent rows. |
 | `components/MarkdownAnswer.jsx:MarkdownAnswer()` | Renders supported Markdown blocks and inline citation/link/formatting tokens. `resolveCitation()`, `safeHref()`, `renderInline()`, `isBlockStart()`, and `splitTableRow()` are parsing helpers. |
 | `components/EvidenceInspector.jsx:EvidenceInspector()` | Right-side Sources/Dataset/Details tabs. `SourceResults()` groups papers/chunks and synchronizes citations; `DatasetResults()` shows returned dataset metadata; `OperationDetails()` shows route/status. `parseValue()`, `getToolOutputs()`, `formatValue()`, `DataField()`, and `toolLabel()` format evidence. |
+| `components/DatasetCharts.jsx:DatasetCharts()` | Parses chart series returned by dataset tools and renders accessible line/bar charts as inline SVG in assistant messages. |
 | `components/PlaceholderPage.jsx:PlaceholderPage()` | Empty states for workspace sections not connected to functionality yet. |
 | `src/index.css`, `src/App.css` | Global tokens/reset and Research Assistant styles. |
 | `components/application-shell.css` | Shared app shell and responsive sidebar/topbar styling. |

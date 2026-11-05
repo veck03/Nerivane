@@ -4,11 +4,12 @@ import { Icon } from './components/ApplicationShell.jsx'
 import ApplicationShell from './components/ApplicationShell.jsx'
 import DashboardPage from './components/DashboardPage.jsx'
 import EvidenceInspector from './components/EvidenceInspector.jsx'
+import DatasetCharts from './components/DatasetCharts.jsx'
 import MarkdownAnswer from './components/MarkdownAnswer.jsx'
 import PlaceholderPage from './components/PlaceholderPage.jsx'
 
 const starterQuestions = [
-  'What is the average sea surface temperature in January?',
+  'Plot a chart of monthly mean sea surface temperature from January through March 2020.',
   'What do the papers say about ocean temperature profiles?',
   'How does the dataset compare with published findings?',
 ]
@@ -361,6 +362,7 @@ function App() {
                       ? <MarkdownAnswer text={message.text} sources={message.paperSources || []} messageId={message.messageId} onCitationClick={handleCitationClick} />
                       : message.text}
                   </div>
+                  {message.role === 'assistant' && message.rawDataOutput && <DatasetCharts rawDataOutput={message.rawDataOutput} />}
                   {message.role === 'assistant' && message.citationWarnings?.length > 0 && (
                     <p className="citation-warning" role="status">
                       Citation check: {message.citationWarnings.join(' ')}

@@ -798,6 +798,49 @@ button,input,textarea { font-family:var(--font-family-base); }
   line-height: 1.4;
 }
 .paper-filters { gap: 4px; }
+
+.message-charts { display: grid; width: min(100%, 790px); gap: 10px; margin-top: 10px; }
+.dataset-chart-card { min-width: 0; padding: 13px 14px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+.dataset-chart-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dataset-chart-heading > div > span { color: var(--content-muted); font-size: var(--font-size-caption); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.dataset-chart-heading h3 { margin: 3px 0 0; color: var(--content-primary); font-size: var(--font-size-body-sm); font-weight: 600; }
+.dataset-chart-units { padding: 3px 7px; border-radius: var(--radius-pill); color: var(--color-teal); background: var(--color-teal-light); font-size: var(--font-size-caption); white-space: nowrap; }
+.dataset-chart-svg { display: block; width: 100%; height: auto; margin-top: 7px; overflow: visible; }
+.dataset-chart-gridline { stroke: var(--border-subtle); stroke-width: 1; }
+.dataset-chart-axis-label, .dataset-chart-unit-label { fill: var(--content-secondary); font-family: var(--font-family-base); font-size: 11px; }
+.dataset-chart-unit-label { fill: var(--content-muted); font-size: 10px; }
+.dataset-chart-line { fill: none; stroke: var(--color-teal); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.dataset-chart-point { fill: var(--color-teal); stroke: var(--surface); stroke-width: 1.5; }
+.dataset-chart-bar { fill: var(--color-teal); opacity: .82; }
+.dataset-chart-bar:hover { opacity: 1; }
+.dataset-chart-footnote { margin: 2px 0 0; color: var(--content-muted); font-size: var(--font-size-caption); line-height: 1.45; }
+.dataset-chart-empty { margin: 0; padding: 16px 4px 5px; color: var(--content-secondary); font-size: var(--font-size-body-sm); }
+
+/* Readable dataset query details and returned values */
+.evidence-parameters > summary, .evidence-raw-details > summary {
+  padding: 9px 0 4px;
+  color: var(--content-secondary);
+  font-size: var(--font-size-body-sm);
+  font-weight: 600;
+}
+.evidence-data-field dt { font-size: var(--font-size-caption); line-height: 1.4; }
+.evidence-data-field dd { font-size: var(--font-size-body-sm); line-height: 1.55; }
+.dataset-raw-output {
+  padding: 10px;
+  border-color: var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--content-secondary);
+  background: var(--surface-muted);
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .dataset-chart-card { padding: 10px 9px 8px; }
+  .dataset-chart-axis-label { font-size: 10px; }
+  .dataset-chart-unit-label { font-size: 9px; }
+}
 .paper-filters input::placeholder { color: var(--content-muted); }
 .paper-filters input:focus-visible { border-color: #a4a8d2; outline: 3px solid rgba(79, 70, 229, .1); outline-offset: 1px; }
 .verify-option { color: var(--content-secondary); font-family: var(--font-family-base); font-size: var(--font-size-caption); }

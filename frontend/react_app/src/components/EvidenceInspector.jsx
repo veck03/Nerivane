@@ -36,6 +36,9 @@ function DataField({ label, value }) {
 function toolLabel(tool) {
   return ({
     get_monthly_statistics: 'Monthly statistics',
+    get_monthly_statistics_for_months: 'Monthly trend series',
+    get_daily_average_series: 'Daily mean series',
+    get_ocean_daily_series_at_point: 'Daily point series',
     get_ocean_values_at_point: 'Values at location',
     get_ocean_dataset_info: 'Dataset information',
   })[tool] || tool || 'Dataset tool'

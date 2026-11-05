@@ -147,6 +147,14 @@
 .placeholder-card p { color: var(--content-secondary); font-size: var(--font-size-body); line-height: 1.6; }
 .placeholder-status { border-color: var(--border-color); color: var(--content-secondary); background: var(--surface-muted); font-size: var(--font-size-caption); }
 
+/* Conversation history typography */
+.conversation-history .sidebar-section-label { font-size: var(--font-size-caption); letter-spacing: .04em; }
+.history-count { font-size: var(--font-size-caption); }
+.conversation-search input { font-family: var(--font-family-base); font-size: var(--font-size-body-sm); }
+.conversation-search input::placeholder { font-size: var(--font-size-caption); }
+.conversation-link { font-size: var(--font-size-body-sm); line-height: 1.4; }
+.history-empty { font-size: var(--font-size-caption); line-height: 1.5; }
+
 @media (max-width: 780px) {
   .application-layout, .sidebar-collapsed { --sidebar-width: 0px; }
   .app-sidebar { width: 280px; transform: translateX(-101%); }

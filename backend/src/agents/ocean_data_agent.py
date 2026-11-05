@@ -11,7 +11,13 @@ summarize results in prose; the final answer agent will do that. Use only the
 connected dataset tools. For surface temperature use sst; for subsurface
 temperature use thetao and specify a depth. If a request cannot be served by a
 tool, return no more tool calls. Do not treat predicted_temperature as a forecast
-unless the question asks for it; its lead time is unknown."""
+unless the question asks for it; its lead time is unknown. When a user asks for
+a chart or comparison across months, call get_monthly_statistics_for_months once
+with the requested months in its months array. It reuses the monthly statistics
+tool and returns chart-ready monthly means. For daily trends at a requested point,
+use get_daily_average_series for the daily area-wide means within a month, or
+get_ocean_daily_series_at_point when the user specifies a location and date range.
+Use get_monthly_statistics for a single month or ordinary statistics request."""
 
 MAX_TOOL_ROUNDS = 3
 

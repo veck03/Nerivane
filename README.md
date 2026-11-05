@@ -18,6 +18,8 @@ For the full workflow walkthrough and file/function reference, see [the project 
 
 Paper citations use response-local labels such as `[S1, p. 4]`, mapped to stable paper IDs. The chat shows paper details and excerpts, links to available DOI or landing pages, and can copy references or download BibTeX.
 
+Dataset trend queries can return chart-ready monthly means for Q1 or daily values at a selected grid point. When those tools return a series, the chat renders it as a lightweight inline SVG bar or line chart. Missing observations remain gaps; no chart is shown when a tool returns only a single statistic or point value.
+
 ## LLM call counts
 
 These are logical Groq model invocations per question, not counting transient HTTP retries. Local Hugging Face embeddings, Chroma/BM25 retrieval, Python data tools, citation validation, and reference formatting do not call an LLM.

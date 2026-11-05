@@ -39,18 +39,30 @@ def _json_result(value: dict[str, Any]) -> str:
     return json.dumps(value, indent=2, allow_nan=False, default=str)
 
 
+def _scalar_value(value: Any) -> Any:
+    """Materialize a scalar before extracting it, including Dask-backed values."""
+    data = getattr(value, "data", value)
+    compute = getattr(data, "compute", None)
+    if callable(compute):
+        data = compute()
+    array = np.asarray(data)
+    if array.size != 1:
+        raise ValueError("Expected a scalar dataset value.")
+    return array.reshape(-1)[0].item()
+
+
 def _finite_number(value: Any) -> float | None:
     """Convert a scalar to a JSON-safe float, mapping NaN and infinity to null."""
-    number = float(np.asarray(value).item())
+    number = float(_scalar_value(value))
     return number if math.isfinite(number) else None
 
 
 def _check_coordinates(ds: xr.Dataset, latitude: float, longitude: float) -> None:
     """Reject coordinates outside the master dataset's spatial coverage."""
-    lat_min = float(ds.latitude.min().item())
-    lat_max = float(ds.latitude.max().item())
-    lon_min = float(ds.longitude.min().item())
-    lon_max = float(ds.longitude.max().item())
+    lat_min = float(_scalar_value(ds.latitude.min()))
+    lat_max = float(_scalar_value(ds.latitude.max()))
+    lon_min = float(_scalar_value(ds.longitude.min()))
+    lon_max = float(_scalar_value(ds.longitude.max()))
     if not lat_min <= latitude <= lat_max or not lon_min <= longitude <= lon_max:
         raise ValueError(
             f"Requested point ({latitude}, {longitude}) is outside coverage: "
@@ -80,8 +92,8 @@ def get_ocean_dataset_info() -> str:
             "time_start": str(ds.time.min().values),
             "time_end": str(ds.time.max().values),
             "time_steps": int(ds.sizes["time"]),
-            "latitude_range": [float(ds.latitude.min().item()), float(ds.latitude.max().item())],
-            "longitude_range": [float(ds.longitude.min().item()), float(ds.longitude.max().item())],
+            "latitude_range": [float(_scalar_value(ds.latitude.min())), float(_scalar_value(ds.latitude.max()))],
+            "longitude_range": [float(_scalar_value(ds.longitude.min())), float(_scalar_value(ds.longitude.max()))],
             "depth_levels_m": [float(value) for value in ds.depth.values]
             if "depth" in ds.coords and ds.depth.ndim == 1
             else [],
@@ -118,8 +130,8 @@ def get_ocean_values_at_point(
                 f"Coverage is {str(ds.time.min().values)} through {str(ds.time.max().values)}."
             ) from error
         point = day.sel(latitude=latitude, longitude=longitude, method="nearest")
-        actual_latitude = float(point.latitude.item())
-        actual_longitude = float(point.longitude.item())
+        actual_latitude = float(_scalar_value(point.latitude))
+        actual_longitude = float(_scalar_value(point.longitude))
         values: dict[str, Any] = {}
         for name, variable in ds.data_vars.items():
             if "depth" in variable.dims:
@@ -131,7 +143,7 @@ def get_ocean_values_at_point(
                 depth_data = point[name].sel(depth=selected_depth, method="nearest")
                 values[name] = {
                     "value": _finite_number(depth_data.values),
-                    "depth_m": float(depth_data.depth.item()),
+                    "depth_m": float(_scalar_value(depth_data.depth)),
                     "units": variable.attrs.get("units"),
                 }
             else:
@@ -204,15 +216,15 @@ def get_monthly_statistics(
             _check_coordinates(ds, latitude, longitude)
             data = data.sel(latitude=latitude, longitude=longitude, method="nearest")
             selected_grid_point = {
-                "latitude": float(data.latitude.item()),
-                "longitude": float(data.longitude.item()),
+                "latitude": float(_scalar_value(data.latitude)),
+                "longitude": float(_scalar_value(data.longitude)),
             }
 
         if "depth" in data.dims:
             if depth_m is None:
                 raise ValueError("Specify depth_m when calculating thetao statistics.")
             data = data.sel(depth=depth_m, method="nearest")
-            selected_depth = float(data.depth.item())
+            selected_depth = float(_scalar_value(data.depth))
         elif depth_m is not None:
             raise ValueError(f"{variable!r} has no depth dimension; omit depth_m.")
 
@@ -237,12 +249,12 @@ def get_monthly_statistics(
                 "valid_count": data.count(),
             }
         ).compute()
-        valid_count = int(computed["valid_count"].item())
+        valid_count = int(_scalar_value(computed["valid_count"]))
         if valid_count:
-            mean = _finite_number(computed["mean"].item())
-            minimum = _finite_number(computed["minimum"].item())
-            maximum = _finite_number(computed["maximum"].item())
-            standard_deviation = _finite_number(computed["standard_deviation"].item())
+            mean = _finite_number(computed["mean"])
+            minimum = _finite_number(computed["minimum"])
+            maximum = _finite_number(computed["maximum"])
+            standard_deviation = _finite_number(computed["standard_deviation"])
         else:
             mean = minimum = maximum = standard_deviation = None
 
@@ -267,8 +279,356 @@ def get_monthly_statistics(
     return _json_result(result)
 
 
+@tool
+def get_monthly_statistics_for_months(
+    variable: str,
+    year: int,
+    months: list[int],
+    latitude: float | None = None,
+    longitude: float | None = None,
+    depth_m: float | None = None,
+) -> str:
+    """Calculate monthly statistics for several months in one tool call.
+
+    Use this for monthly comparisons or a chart across months. It calls the existing
+    single-month statistics function for every requested month, preserving its
+    NaN-aware mean and area-weighted aggregation behavior.
+
+    Args:
+        variable: Dataset variable such as sst, sss, sla, current_u, wind_u, or thetao.
+        year: Year in the dataset (currently 2020).
+        months: Array of month numbers, for example [1, 2, 3].
+        latitude: Optional latitude. Supply together with longitude for a nearest grid point.
+        longitude: Optional longitude.
+        depth_m: Required for depth-dependent variables such as thetao.
+    """
+    if not months:
+        raise ValueError("Provide at least one month.")
+    if len(months) > 12:
+        raise ValueError("Request no more than 12 months at a time.")
+    if len(set(months)) != len(months):
+        raise ValueError("Month values must not be duplicated.")
+    if (latitude is None) != (longitude is None):
+        raise ValueError("Provide both latitude and longitude, or neither.")
+
+    monthly_results = []
+    for month in months:
+        arguments = {
+            "variable": variable,
+            "year": year,
+            "month": month,
+            "latitude": latitude,
+            "longitude": longitude,
+            "depth_m": depth_m,
+        }
+        try:
+            output = get_monthly_statistics.invoke(arguments)
+            monthly_results.append(json.loads(output))
+        except Exception as error:
+            monthly_results.append({
+                "period": f"{year:04d}-{month:02d}" if 1 <= month <= 12 else str(month),
+                "variable": variable,
+                "error": str(error),
+            })
+
+    units = next((result.get("units") for result in monthly_results if result.get("units")), None)
+    labels = [result.get("period", str(month)) for month, result in zip(months, monthly_results)]
+    values = [result.get("mean") for result in monthly_results]
+    errors = [result.get("error") for result in monthly_results]
+    result = {
+        "dataset": MASTER_DATASET_PATH.name,
+        "variable": variable,
+        "units": units,
+        "monthly_results": monthly_results,
+        "failed_months": [label for label, error in zip(labels, errors) if error],
+        "chart_data": {
+            "type": "bar",
+            "title": f"Monthly mean {variable}",
+            "variable": variable,
+            "units": units,
+            "labels": labels,
+            "values": values,
+        },
+    }
+    return _json_result(result)
+
+
+@tool
+def get_daily_average_series(
+    variable: str,
+    year: int,
+    month: int,
+    days: list[int] | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    depth_m: float | None = None,
+) -> str:
+    """Return one daily mean per date in a month as line-chart data.
+
+    Args:
+        variable: Dataset variable such as sst, sss, sla, current_u, or thetao.
+        year: Year in the dataset (currently 2020).
+        month: Month number from 1 to 12.
+        days: Optional array of day numbers to include. If omitted, use every available day.
+        latitude: Optional latitude. Supply together with longitude for a nearest grid point.
+        longitude: Optional longitude.
+        depth_m: Required for depth-dependent variables such as thetao.
+
+    Without a location, each point is the cosine-of-latitude area-weighted daily
+    mean across valid grid cells. At a location, each point is the value at the
+    nearest grid cell. NaNs are skipped, and missing days remain chart gaps.
+    """
+    if month < 1 or month > 12:
+        raise ValueError("month must be between 1 and 12")
+    if (latitude is None) != (longitude is None):
+        raise ValueError("Provide both latitude and longitude, or neither.")
+    month_days = calendar.monthrange(year, month)[1]
+    if days is not None:
+        if not days:
+            raise ValueError("Provide at least one day or omit days to use the full month.")
+        if len(days) > month_days or len(set(days)) != len(days):
+            raise ValueError("Day values must be unique and fit within the selected month.")
+        if any(day < 1 or day > month_days for day in days):
+            raise ValueError(f"Days for {year:04d}-{month:02d} must be between 1 and {month_days}.")
+
+    month_start = f"{year:04d}-{month:02d}-01"
+    month_end = f"{year:04d}-{month:02d}-{month_days:02d}"
+    with _open_master_dataset() as ds:
+        if variable not in ds.data_vars:
+            raise ValueError(f"Unknown variable {variable!r}. Available variables: {', '.join(ds.data_vars)}.")
+        data = ds[variable].sel(time=slice(month_start, month_end))
+        if data.sizes.get("time", 0) == 0:
+            raise ValueError(f"No data for {year:04d}-{month:02d}.")
+
+        selected_grid_point = None
+        if latitude is not None and longitude is not None:
+            _check_coordinates(ds, latitude, longitude)
+            data = data.sel(latitude=latitude, longitude=longitude, method="nearest")
+            selected_grid_point = {
+                "latitude": float(_scalar_value(data.latitude)),
+                "longitude": float(_scalar_value(data.longitude)),
+            }
+
+        selected_depth = None
+        if "depth" in data.dims:
+            if depth_m is None:
+                raise ValueError(f"Specify depth_m for depth-dependent variable {variable!r}.")
+            data = data.sel(depth=depth_m, method="nearest")
+            selected_depth = float(_scalar_value(data.depth))
+        elif depth_m is not None:
+            raise ValueError(f"{variable!r} has no depth dimension; omit depth_m.")
+
+        if days is not None:
+            data = data.where(data.time.dt.day.isin(days), drop=True)
+        if data.sizes.get("time", 0) == 0:
+            raise ValueError("No dataset observations were found for the requested days.")
+
+        if selected_grid_point:
+            daily_means = data
+            daily_counts = data.count()
+            scope = "values at the nearest grid point for each valid day"
+        else:
+            weights = np.cos(np.deg2rad(ds.latitude))
+            daily_means = data.weighted(weights).mean(dim=("latitude", "longitude"), skipna=True)
+            daily_counts = data.count(dim=("latitude", "longitude"))
+            scope = "cosine-of-latitude area-weighted mean across valid grid cells for each day"
+
+        computed = xr.Dataset({"mean": daily_means, "count": daily_counts}).compute()
+        labels = [str(np.datetime_as_string(value, unit="D")) for value in computed.time.values]
+        values = [_finite_number(value) for value in computed["mean"].values]
+        counts = [int(value) for value in np.asarray(computed["count"].values).reshape(-1)]
+        result = {
+            "dataset": MASTER_DATASET_PATH.name,
+            "variable": variable,
+            "units": ds[variable].attrs.get("units"),
+            "period": f"{year:04d}-{month:02d}",
+            "selected_days": labels,
+            "selected_grid_point": selected_grid_point,
+            "selected_depth_m": selected_depth,
+            "aggregation_scope": scope,
+            "nan_values_skipped": True,
+            "valid_observation_counts": counts,
+            "chart_data": {
+                "type": "line",
+                "title": f"Daily mean {variable} · {year:04d}-{month:02d}",
+                "variable": variable,
+                "units": ds[variable].attrs.get("units"),
+                "labels": labels,
+                "values": values,
+            },
+        }
+    return _json_result(result)
+
+
+@tool
+def get_ocean_monthly_series(
+    variable: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    depth_m: float | None = None,
+) -> str:
+    """Return Q1 monthly means for a variable, suitable for a compact bar chart.
+
+    Args:
+        variable: Dataset variable such as sst, sss, sla, current_u, wind_u, or thetao.
+        latitude: Optional latitude. Supply together with longitude for a nearest grid point.
+        longitude: Optional longitude, used together with latitude.
+        depth_m: Required for depth-dependent variables such as thetao.
+
+    Without a location, values are cosine-of-latitude area-weighted means over valid
+    grid cells and days. With a location, values are daily means at the nearest cell.
+    The master dataset currently covers January through March 2020. NaNs are skipped.
+    """
+    if (latitude is None) != (longitude is None):
+        raise ValueError("Provide both latitude and longitude, or neither.")
+
+    with _open_master_dataset() as ds:
+        if variable not in ds.data_vars:
+            raise ValueError(f"Unknown variable {variable!r}. Available variables: {', '.join(ds.data_vars)}.")
+        data = ds[variable]
+        if "depth" in data.dims:
+            if depth_m is None:
+                raise ValueError(f"Specify depth_m for depth-dependent variable {variable!r}.")
+            data = data.sel(depth=depth_m, method="nearest")
+            selected_depth = float(_scalar_value(data.depth))
+        else:
+            if depth_m is not None:
+                raise ValueError(f"{variable!r} has no depth dimension; omit depth_m.")
+            selected_depth = None
+
+        selected_grid_point = None
+        if latitude is not None and longitude is not None:
+            _check_coordinates(ds, latitude, longitude)
+            data = data.sel(latitude=latitude, longitude=longitude, method="nearest")
+            selected_grid_point = {
+                "latitude": float(_scalar_value(data.latitude)),
+                "longitude": float(_scalar_value(data.longitude)),
+            }
+
+        month_numbers = sorted({int(value) for value in ds.time.dt.month.values.tolist()})
+        labels: list[str] = []
+        monthly_results = []
+        for month in month_numbers:
+            monthly_data = data.where(data.time.dt.month == month, drop=True)
+            labels.append(f"2020-{month:02d}")
+            if selected_grid_point:
+                monthly_mean = monthly_data.mean(dim="time", skipna=True)
+            else:
+                weights = np.cos(np.deg2rad(ds.latitude))
+                monthly_mean = monthly_data.weighted(weights).mean(
+                    dim=("time", "latitude", "longitude"), skipna=True
+                )
+            monthly_results.append(xr.Dataset({"mean": monthly_mean, "count": monthly_data.count()}))
+
+        computed = xr.concat(monthly_results, dim="month").compute()
+        means = [_finite_number(value) for value in computed["mean"].values]
+        counts = [int(value) for value in computed["count"].values]
+
+        result = {
+            "dataset": MASTER_DATASET_PATH.name,
+            "variable": variable,
+            "units": ds[variable].attrs.get("units"),
+            "selected_grid_point": selected_grid_point,
+            "selected_depth_m": selected_depth,
+            "aggregation_scope": "nearest grid point over valid daily values" if selected_grid_point else "cosine-of-latitude area-weighted mean over valid grid cells and days",
+            "nan_values_skipped": True,
+            "valid_observation_counts": counts,
+            "chart_data": {
+                "type": "bar",
+                "title": f"Monthly mean {variable}",
+                "variable": variable,
+                "units": ds[variable].attrs.get("units"),
+                "labels": labels,
+                "values": means,
+            },
+        }
+    return _json_result(result)
+
+
+@tool
+def get_ocean_daily_series_at_point(
+    variable: str,
+    latitude: float,
+    longitude: float,
+    start_date: str,
+    end_date: str,
+    depth_m: float | None = None,
+) -> str:
+    """Return daily values for one variable at the nearest grid point for a line chart.
+
+    Args:
+        variable: Dataset variable such as sst, sss, sla, current_u, wind_u, or thetao.
+        latitude: Requested latitude in decimal degrees.
+        longitude: Requested longitude in decimal degrees east.
+        start_date: Inclusive start date (YYYY-MM-DD).
+        end_date: Inclusive end date (YYYY-MM-DD). The range is limited to 366 time steps.
+        depth_m: Required for depth-dependent variables such as thetao.
+
+    Missing measurements are returned as null and should appear as gaps in the chart.
+    The tool reads only the requested variable and selected grid point.
+    """
+    if (latitude is None) or (longitude is None):
+        raise ValueError("Provide both latitude and longitude.")
+    try:
+        start = np.datetime64(start_date, "D")
+        end = np.datetime64(end_date, "D")
+    except (TypeError, ValueError) as error:
+        raise ValueError("Dates must use YYYY-MM-DD format.") from error
+    if end < start:
+        raise ValueError("end_date must be on or after start_date.")
+    if int((end - start) / np.timedelta64(1, "D")) + 1 > 366:
+        raise ValueError("Choose a date range of 366 days or less.")
+
+    with _open_master_dataset() as ds:
+        if variable not in ds.data_vars:
+            raise ValueError(f"Unknown variable {variable!r}. Available variables: {', '.join(ds.data_vars)}.")
+        _check_coordinates(ds, latitude, longitude)
+        data = ds[variable].sel(time=slice(start, end))
+        if data.sizes.get("time", 0) == 0:
+            raise ValueError("No dataset observations fall within the requested date range.")
+        data = data.sel(latitude=latitude, longitude=longitude, method="nearest")
+        selected_depth = None
+        if "depth" in data.dims:
+            if depth_m is None:
+                raise ValueError(f"Specify depth_m for depth-dependent variable {variable!r}.")
+            data = data.sel(depth=depth_m, method="nearest")
+            selected_depth = float(_scalar_value(data.depth))
+        elif depth_m is not None:
+            raise ValueError(f"{variable!r} has no depth dimension; omit depth_m.")
+
+        values = np.asarray(data.compute().values).reshape(-1)
+        labels = [str(np.datetime_as_string(value, unit="D")) for value in data.time.values]
+        series = [_finite_number(value) for value in values]
+        result = {
+            "dataset": MASTER_DATASET_PATH.name,
+            "variable": variable,
+            "units": ds[variable].attrs.get("units"),
+            "requested_point": {"latitude": latitude, "longitude": longitude},
+            "selected_grid_point": {
+                "latitude": float(_scalar_value(data.latitude)),
+                "longitude": float(_scalar_value(data.longitude)),
+            },
+            "selected_depth_m": selected_depth,
+            "period": {"start": labels[0], "end": labels[-1]},
+            "valid_observation_count": sum(value is not None for value in series),
+            "nan_values_skipped": True,
+            "chart_data": {
+                "type": "line",
+                "title": f"{variable} over time at selected point",
+                "variable": variable,
+                "units": ds[variable].attrs.get("units"),
+                "labels": labels,
+                "values": series,
+            },
+        }
+    return _json_result(result)
+
+
 OCEAN_DATA_TOOLS = [
     get_ocean_dataset_info,
     get_ocean_values_at_point,
     get_monthly_statistics,
+    get_monthly_statistics_for_months,
+    get_daily_average_series,
+    get_ocean_daily_series_at_point,
 ]
