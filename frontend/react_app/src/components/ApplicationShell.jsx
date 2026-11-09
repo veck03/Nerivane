@@ -3,7 +3,7 @@ import './application-shell.css'
 
 const mainNavigation = [
   { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-  { label: 'Research Assistant', path: '/', icon: 'assistant' },
+  { label: 'Research Assistant', path: '/research-assistant', icon: 'assistant' },
   { label: 'Paper Library', path: '/papers', icon: 'papers' },
   { label: 'Datasets', path: '/datasets', icon: 'datasets' },
   { label: 'Visualizations', path: '/visualizations', icon: 'visualizations' },
@@ -21,7 +21,7 @@ const bottomNavigation = [
 ]
 
 const pageTitles = {
-  '/': 'Research Assistant',
+  '/research-assistant': 'Research Assistant',
   '/dashboard': 'Dashboard',
   '/papers': 'Paper Library',
   '/datasets': 'Datasets',
@@ -47,6 +47,7 @@ const iconPaths = {
   menu: <><path d="M4 6h16M4 12h16M4 18h16" /></>,
   collapse: <><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M9 4v16M14 9l-3 3 3 3" /></>,
   expand: <><rect x="3.5" y="4" width="17" height="16" rx="2" /><path d="M9 4v16M13 9l3 3-3 3" /></>,
+  logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></>,
   search: <><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4.5 4.5" /></>,
   plus: <><path d="M12 5v14M5 12h14" /></>,
   close: <><path d="m6 6 12 12M18 6 6 18" /></>,
@@ -73,7 +74,7 @@ function NavigationGroup({ title, items, currentPath, navigate, collapsed, onNav
   )
 }
 
-export default function ApplicationShell({ children, currentPath, navigate, collapsed, onToggleCollapsed, mobileOpen, onToggleMobile, onCloseMobile, conversations, activeConversationId, onNewChat, onSelectConversation, busy }) {
+export default function ApplicationShell({ children, currentPath, navigate, collapsed, onToggleCollapsed, mobileOpen, onToggleMobile, onCloseMobile, conversations, activeConversationId, onNewChat, onSelectConversation, busy, user, appRole = 'member', onSignOut, onSignIn }) {
   const [conversationSearch, setConversationSearch] = useState('')
   const pageTitle = pageTitles[currentPath] || 'Workspace'
   const filteredConversations = conversations.filter((conversation) => conversation.title.toLowerCase().includes(conversationSearch.trim().toLowerCase()))
@@ -82,7 +83,7 @@ export default function ApplicationShell({ children, currentPath, navigate, coll
     <button className="sidebar-scrim" type="button" aria-label="Close navigation" onClick={onCloseMobile} />
     <aside className="app-sidebar" aria-label="Main navigation">
       <div className="sidebar-brand-row">
-        <a className="sidebar-brand" href="/" aria-label={collapsed ? 'Expand sidebar' : 'Nerivane home'} title={collapsed ? 'Expand sidebar' : undefined} onClick={(event) => { event.preventDefault(); if (collapsed) { onToggleCollapsed(); return } navigate('/'); onCloseMobile() }}>
+        <a className="sidebar-brand" href="/dashboard" aria-label={collapsed ? 'Expand sidebar' : 'Nerivane home'} title={collapsed ? 'Expand sidebar' : undefined} onClick={(event) => { event.preventDefault(); if (collapsed) { onToggleCollapsed(); return } navigate('/dashboard'); onCloseMobile() }}>
           <span className="nerivane-mark" aria-hidden="true"><span /></span>{!collapsed && <span className="sidebar-brand-name">Nerivane</span>}
         </a>
         <button className="icon-button sidebar-close" type="button" aria-label="Close navigation" onClick={onCloseMobile}><Icon name="close" /></button>
@@ -96,23 +97,29 @@ export default function ApplicationShell({ children, currentPath, navigate, coll
           <div className="history-heading"><span className="sidebar-section-label">History</span><span className="history-count">{conversations.length || ''}</span></div>
           <label className="conversation-search"><Icon name="search" /><span className="sr-only">Search conversations</span><input value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} placeholder="Search conversations" />{conversationSearch && <button type="button" aria-label="Clear search" onClick={() => setConversationSearch('')}><Icon name="close" /></button>}</label>
           <div className="conversation-list">
-            {filteredConversations.map((conversation) => <button key={conversation.id} className={`conversation-link${activeConversationId === conversation.id && currentPath === '/' ? ' is-current' : ''}`} type="button" disabled={busy} onClick={() => { onSelectConversation(conversation.id); onCloseMobile() }} title={conversation.title}><span className="conversation-indicator" /><span>{conversation.title}</span></button>)}
+            {filteredConversations.map((conversation) => <button key={conversation.id} className={`conversation-link${activeConversationId === conversation.id && currentPath === '/research-assistant' ? ' is-current' : ''}`} type="button" disabled={busy} onClick={() => { onSelectConversation(conversation.id); onCloseMobile() }} title={conversation.title}><span className="conversation-indicator" /><span>{conversation.title}</span></button>)}
             {filteredConversations.length === 0 && <p className="history-empty">{conversationSearch ? 'No matching conversations' : 'Your recent chats will appear here'}</p>}
           </div>
         </section>}
       </div>
       <div className="sidebar-bottom">
         <NavigationGroup title="Account" items={bottomNavigation} currentPath={currentPath} navigate={navigate} collapsed={collapsed} onNavigate={onCloseMobile} />
-        {!collapsed && <div className="sidebar-footer-note"><span className="footer-avatar">N</span><span><strong>Nerivane</strong><small>Research workspace</small></span></div>}
+        {user ? <div className={'sidebar-account-row' + (collapsed ? ' is-collapsed' : '')}>
+          <div className="sidebar-footer-note">
+            <span className="footer-avatar">{(user?.email?.[0] || 'U').toUpperCase()}</span>
+            {!collapsed && <span className="sidebar-account-copy"><strong title={user?.email || 'Signed in'}>{user?.email || 'Signed in'}</strong><small>{appRole} role</small></span>}
+          </div>
+          <button className="icon-button sidebar-signout" type="button" aria-label="Sign out" title="Sign out" onClick={onSignOut}><Icon name="logout" /></button>
+        </div> : <button className="sidebar-signin-button" type="button" onClick={onSignIn}><span className="footer-avatar">G</span>{!collapsed && <span>Sign in</span>}</button>}
       </div>
     </aside>
     <div className="workspace-area">
-      {currentPath !== '/' && <header className="workspace-topbar">
+      {currentPath !== '/research-assistant' && <header className="workspace-topbar">
         <button className="icon-button mobile-menu-button" type="button" aria-label="Open navigation" onClick={onToggleMobile}><Icon name="menu" /></button>
         <div className="topbar-heading"><span className="topbar-kicker">Nerivane workspace</span><h1>{pageTitle}</h1></div>
         <div className="topbar-status"><span className="status-dot" /><span>Research assistant</span></div>
       </header>}
-      <main className={`workspace-content${currentPath === '/' ? ' workspace-content-chat' : ''}`}>{children}</main>
+      <main className={`workspace-content${currentPath === '/research-assistant' ? ' workspace-content-chat' : ''}`}>{children}</main>
     </div>
   </div>
 }

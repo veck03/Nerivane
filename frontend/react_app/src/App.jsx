@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { Icon } from './components/ApplicationShell.jsx'
 import ApplicationShell from './components/ApplicationShell.jsx'
+import { useAuth } from './auth/useAuth.js'
 import DashboardPage from './components/DashboardPage.jsx'
 import EvidenceInspector from './components/EvidenceInspector.jsx'
 import DatasetCharts from './components/DatasetCharts.jsx'
 import MarkdownAnswer from './components/MarkdownAnswer.jsx'
 import PlaceholderPage from './components/PlaceholderPage.jsx'
 import AboutDeveloper from './components/AboutDeveloper.jsx'
+import AuthScreen from './components/AuthScreen.jsx'
 
 const starterQuestions = [
   'Plot a chart of monthly mean sea surface temperature from January through March 2020.',
@@ -23,7 +25,7 @@ const routeLabels = {
 }
 
 function normalizePath(path) {
-  return path === '/research-assistant' ? '/' : path
+  return path === '/' || path === '/login' ? '/dashboard' : path
 }
 
 function downloadBibtex(sources) {
@@ -40,7 +42,8 @@ function downloadBibtex(sources) {
   URL.revokeObjectURL(url)
 }
 
-function App() {
+function WorkspaceApp() {
+  const { session, appRole, signOut } = useAuth()
   const [messages, setMessages] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,7 +52,11 @@ function App() {
   const [yearTo, setYearTo] = useState('')
   const [verifyCitations, setVerifyCitations] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState(null)
-  const [currentPath, setCurrentPath] = useState(() => normalizePath(window.location.pathname || '/'))
+  const [initialPath] = useState(() => normalizePath(window.location.pathname || '/'))
+  const [currentPath, setCurrentPath] = useState(initialPath)
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('nerivane-theme') === 'dark' ? 'dark' : 'light')
+  const [loginOpen, setLoginOpen] = useState(() => window.location.pathname === '/login')
+  const visiblePath = currentPath
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState(() => Date.now())
@@ -66,15 +73,34 @@ function App() {
   const messageIdRef = useRef(0)
 
   useEffect(() => {
-    const updatePath = () => setCurrentPath(normalizePath(window.location.pathname || '/'))
+    document.documentElement.dataset.theme = theme
+    document.body.classList.toggle('dark', theme === 'dark')
+    window.localStorage.setItem('nerivane-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
+    const updatePath = () => {
+      const requestedPath = normalizePath(window.location.pathname || '/')
+      setCurrentPath(requestedPath)
+    }
     window.addEventListener('popstate', updatePath)
     return () => window.removeEventListener('popstate', updatePath)
-  }, [])
+  }, [session])
+
+  useEffect(() => {
+    if (window.location.pathname !== visiblePath) {
+      window.history.replaceState({}, '', visiblePath)
+    }
+  }, [visiblePath])
 
   function navigate(path) {
     const nextPath = normalizePath(path)
     if (window.location.pathname !== nextPath) window.history.pushState({}, '', nextPath)
     setCurrentPath(nextPath)
+  }
+
+  function requestLogin() {
+    setLoginOpen(true)
   }
 
   function startNewChat() {
@@ -95,11 +121,15 @@ function App() {
     setSelectedSourceId(null)
     setSelectedChunkIndex(null)
     setInspectorTab('sources')
-    navigate('/')
+    navigate('/research-assistant')
     setMobileSidebarOpen(false)
   }
 
   function selectConversation(conversationId) {
+    if (!session) {
+      requestLogin()
+      return
+    }
     const current = messages.length ? {
       id: activeConversationId,
       title: messages.find((message) => message.role === 'user')?.text.slice(0, 56) || 'Research conversation',
@@ -118,7 +148,7 @@ function App() {
     setSelectedChunkIndex(null)
     setQuery('')
     setError('')
-    navigate('/')
+    navigate('/research-assistant')
   }
 
   const latestAssistantPreview = [...messages].reverse().find((message) => message.role === 'assistant')?.text
@@ -146,6 +176,10 @@ function App() {
   }, [query])
 
   async function sendMessage(value = query, sourceMode = null) {
+    if (!session) {
+      requestLogin()
+      return
+    }
     const text = value.trim()
     if (!text || loading) return
     if (yearFrom && yearTo && Number(yearFrom) > Number(yearTo)) {
@@ -167,7 +201,10 @@ function App() {
       const requestQuery = sourceDirective ? `${sourceDirective}\n${text}` : text
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + session.access_token,
+        },
         body: JSON.stringify({
           query: requestQuery,
           ...(yearFrom ? { publication_year_from: Number(yearFrom) } : {}),
@@ -221,6 +258,10 @@ function App() {
 
   function startResearchFromDashboard(text, sourceMode) {
     if (loading) return
+    if (!session) {
+      requestLogin()
+      return
+    }
     startNewChat()
     sendMessage(text, sourceMode)
   }
@@ -296,8 +337,9 @@ function App() {
   const evidenceMessage = messages.find((message) => message.messageId === evidenceMessageId) || latestAssistantMessage
 
   return (
+    <>
     <ApplicationShell
-      currentPath={currentPath}
+      currentPath={visiblePath}
       navigate={navigate}
       collapsed={sidebarCollapsed}
       onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
@@ -309,10 +351,14 @@ function App() {
       onNewChat={startNewChat}
       onSelectConversation={selectConversation}
       busy={loading}
+      user={session?.user}
+      appRole={appRole}
+      onSignOut={signOut}
+      onSignIn={requestLogin}
     >
-      {currentPath === '/dashboard' ? <DashboardPage conversations={recentConversations} onStartResearch={startResearchFromDashboard} onOpenConversation={selectConversation} loading={loading} />
-        : currentPath === '/about' ? <AboutDeveloper />
-        : currentPath === '/' ? <div className="research-assistant-page">
+      {visiblePath === '/dashboard' ? <DashboardPage conversations={recentConversations} onStartResearch={startResearchFromDashboard} onOpenConversation={selectConversation} loading={loading} isAuthenticated={Boolean(session)} onRequestLogin={requestLogin} />
+        : visiblePath === '/about' ? <AboutDeveloper />
+        : visiblePath === '/research-assistant' ? <div className="research-assistant-page">
       <header className="conversation-header">
         <div className="assistant-header-left">
           <button className="icon-button mobile-menu-button" type="button" aria-label="Open navigation" onClick={() => setMobileSidebarOpen((open) => !open)}><Icon name="menu" /></button>
@@ -434,7 +480,7 @@ function App() {
         </div>
         <form className="composer" onSubmit={handleSubmit}>
           <label className="sr-only" htmlFor="chat-input">Your question</label>
-          <textarea
+            <textarea
             ref={queryInputRef}
             id="chat-input"
             rows="1"
@@ -447,6 +493,8 @@ function App() {
               }
             }}
             placeholder="Ask a research question…"
+            onFocus={() => { if (!session) { requestLogin(); queryInputRef.current?.blur() } }}
+            onClick={() => { if (!session) requestLogin() }}
             disabled={loading}
           />
           <button className="send-button" type="submit" disabled={loading || !query.trim()} aria-label="Send message">
@@ -471,9 +519,17 @@ function App() {
         copiedMessage={copiedMessage}
       />
       </div>
-      </div> : <PlaceholderPage path={currentPath} />}
+      </div> : <PlaceholderPage path={visiblePath} theme={theme} onThemeChange={setTheme} />}
     </ApplicationShell>
+    {!session && loginOpen && <AuthScreen onCancel={() => setLoginOpen(false)} onAuthenticated={() => setLoginOpen(false)} />}
+    </>
   )
+}
+
+function App() {
+  const { loading } = useAuth()
+  if (loading) return <main className="auth-loading">Restoring your session…</main>
+  return <WorkspaceApp />
 }
 
 export default App

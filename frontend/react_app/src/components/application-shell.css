@@ -154,6 +154,20 @@
 .conversation-search input::placeholder { font-size: var(--font-size-caption); }
 .conversation-link { font-size: var(--font-size-body-sm); line-height: 1.4; }
 .history-empty { font-size: var(--font-size-caption); line-height: 1.5; }
+.sidebar-account-row { display: flex; align-items: center; gap: 4px; margin-top: 11px; padding: 9px 4px 0; border-top: 1px solid rgba(224, 230, 240, .08); }
+.sidebar-account-row .sidebar-footer-note { min-width: 0; flex: 1; gap: 8px; margin: 0; padding: 0; overflow: hidden; border: 0; }
+.sidebar-account-copy { min-width: 0; }
+.sidebar-account-copy strong, .sidebar-account-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-account-copy strong { color: #d4dbe5; font-size: 11px; font-weight: 600; }
+.sidebar-account-copy small { margin-top: 3px; color: #aeb8c7; font-size: 11px; }
+.sidebar-signout { flex: 0 0 34px; color: #aeb8c7; }
+.sidebar-signout:hover { color: #fff; }
+.sidebar-signin-button { display: flex; min-height: 40px; align-items: center; gap: 10px; margin-top: 10px; padding: 4px 8px; border: 1px solid rgba(191, 201, 221, .12); border-radius: 9px; color: #c4cbd7; background: rgba(255, 255, 255, .045); cursor: pointer; font: inherit; font-size: 11px; }
+.sidebar-signin-button:hover { color: #fff; background: rgba(255, 255, 255, .085); }
+.sidebar-signin-button .footer-avatar { margin: 0; }
+.sidebar-collapsed .sidebar-signin-button { width: 40px; justify-content: center; padding: 0; }
+.sidebar-account-row.is-collapsed { justify-content: center; padding-inline: 0; border-top: 0; }
+.sidebar-account-row.is-collapsed .sidebar-footer-note { display: none; }
 
 @media (max-width: 780px) {
   .application-layout, .sidebar-collapsed { --sidebar-width: 0px; }

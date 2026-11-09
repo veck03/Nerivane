@@ -59,6 +59,7 @@ Raw NetCDF files for inspection can be placed under `data/legacy_dataset/raw/`. 
 - [uv](https://docs.astral.sh/uv/)
 - Node.js and npm
 - A Groq API key
+- A Supabase project with email/password authentication enabled
 - The master Zarr dataset for ocean data questions
 
 ## Configure and install the backend
@@ -71,6 +72,12 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
 Edit `backend/.env` locally and set `GROQ_API_KEY`. `GROQ_CHAT_MODEL` is optional; the configured default is `openai/gpt-oss-120b` on Groq. `OPENALEX_API_KEY` and `MAIL_TO` are optional for OpenAlex ingestion. Never commit `.env` or put actual keys in source files. The root `.gitignore` ignores `.env` and keeps `.env.example`.
+
+### Configure Supabase login
+
+In Supabase, enable the Email and Google providers. Copy the project's **Project URL** and **publishable key** into both `backend/.env` and `frontend/react_app/.env`, using the names shown in each `.env.example`. These are public project settings; do not put a service-role key in this app. In Google Cloud, create a Web OAuth client and enter its client ID and secret in the Supabase Google provider settings. Add the Supabase callback URL shown there to Google's authorized redirect URIs. Add your local app URLs (for example `http://localhost:5173` and `http://127.0.0.1:5173`) and production origin to Supabase Auth's allowed redirect URLs. Restart both processes after changing the app environment values. If email confirmation is enabled, new email/password users must confirm their email before signing in.
+
+Guests can open every tab. Focusing the Research Assistant or Dashboard chat input prompts them to sign in; submitting Dashboard suggestions also requires a session. Signed-in users can use all chat features. The app reads the trusted `app_metadata.app_role` value and displays it in the sidebar; users without a role appear as `member`. FastAPI independently validates bearer tokens with Supabase before accepting `/api/chat` and `/api/auth/me`. Roles are informational for now; no feature restrictions are enforced. Set roles only through trusted Supabase admin/server tooling, never client-editable user metadata. Disable public sign-ups in Supabase Auth settings if accounts should be invite-only.
 
 Install the Python dependencies:
 
@@ -99,7 +106,7 @@ npm ci
 npm run dev
 ```
 
-Open the Vite URL printed in the terminal, usually `http://localhost:5173`. Vite proxies `/api` requests to the FastAPI server at `127.0.0.1:8000`. Run `npm ci` when setting up or refreshing dependencies; start the frontend with `npm run dev`.
+Open the Vite URL printed in the terminal, usually `http://localhost:5173`. The Dashboard is the default page and is available without signing in. Guests can open every tab, but chat interactions and recent conversation reopening open a sign-in dialog over the current page. Click outside the dialog or choose “Continue as guest” to dismiss it. Signed-in users can use all chat features. The Research Assistant route is `/research-assistant`; `/` opens the Dashboard. Vite proxies `/api` requests to FastAPI at `127.0.0.1:8000`. Run `npm ci` when setting up or refreshing dependencies; start the frontend with `npm run dev`.
 
 ## Chat API
 

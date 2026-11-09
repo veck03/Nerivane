@@ -57,7 +57,7 @@ function conversationPreview(conversation) {
   return (lastAssistant?.text || lastUser?.text || '').replace(/\s+/g, ' ').trim()
 }
 
-export default function DashboardPage({ conversations, onStartResearch, onOpenConversation, loading }) {
+export default function DashboardPage({ conversations, onStartResearch, onOpenConversation, loading, isAuthenticated, onRequestLogin }) {
   const [query, setQuery] = useState('')
   const [sourceMode, setSourceMode] = useState('both')
 
@@ -87,7 +87,7 @@ export default function DashboardPage({ conversations, onStartResearch, onOpenCo
         <div className="dashboard-search-main">
           <Icon name="search" />
           <label className="sr-only" htmlFor="dashboard-query">Research question</label>
-          <textarea id="dashboard-query" value={query} onChange={(event) => setQuery(event.target.value)} rows="1" maxLength={3960} placeholder="Ask a question across papers and datasets…" disabled={loading} onKeyDown={(event) => {
+        <textarea id="dashboard-query" value={query} onChange={(event) => setQuery(event.target.value)} rows="1" maxLength={3960} placeholder="Ask a question across papers and datasets…" readOnly={!isAuthenticated} disabled={loading} onFocus={() => { if (!isAuthenticated) onRequestLogin?.() }} onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
               event.currentTarget.form?.requestSubmit()

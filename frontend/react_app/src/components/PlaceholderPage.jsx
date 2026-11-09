@@ -12,8 +12,30 @@ const descriptions = {
   '/about': ['About Nerivane.', 'Nerivane is an AI research assistant for exploring scientific papers and ocean datasets.'],
 }
 
-export default function PlaceholderPage({ path }) {
+import './theme-settings.css'
+
+export default function PlaceholderPage({ path, theme, onThemeChange }) {
   const [title, description] = descriptions[path] || ['Page not found.', 'Choose a destination from the navigation.']
+  if (path === '/settings') return <section className="settings-page" aria-labelledby="settings-title">
+    <header className="settings-page-header">
+      <span className="placeholder-eyebrow">Preferences</span>
+      <h2 id="settings-title">Settings</h2>
+      <p>Manage your workspace preferences.</p>
+    </header>
+    <section className="settings-section" aria-labelledby="appearance-title">
+      <div className="settings-section-heading">
+        <h3 id="appearance-title">Appearance</h3>
+        <p>Choose how Nerivane looks on this device.</p>
+      </div>
+      <div className="theme-setting">
+        <div className="theme-setting-copy"><strong>Theme</strong><span>Select a light or dark color scheme.</span></div>
+        <div className="theme-selector" role="group" aria-label="Theme">
+          <button type="button" aria-pressed={theme === 'light'} className={theme === 'light' ? 'is-selected' : ''} onClick={() => onThemeChange('light')}>Light</button>
+          <button type="button" aria-pressed={theme === 'dark'} className={theme === 'dark' ? 'is-selected' : ''} onClick={() => onThemeChange('dark')}>Dark</button>
+        </div>
+      </div>
+    </section>
+  </section>
   return <section className="placeholder-page" aria-labelledby="placeholder-title">
     <div className="placeholder-card">
       <div className="placeholder-icon"><Icon name={path === '/datasets' || path === '/visualizations' ? 'datasets' : 'papers'} /></div>

@@ -1,0 +1,49 @@
+.auth-page {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, .3);
+  backdrop-filter: blur(7px);
+}
+.auth-cancel { display: block; margin: 14px auto 0; padding: 5px 8px; border: 0; color: var(--content-secondary); background: transparent; cursor: pointer; font: inherit; font-size: var(--font-size-body-sm); }
+.auth-cancel:hover { color: var(--color-primary); }
+.auth-card {
+  width: min(100%, 430px);
+  padding: clamp(26px, 5vw, 38px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.auth-brand { display: flex; align-items: center; gap: 11px; color: var(--content-primary); font-size: var(--font-size-heading-md); font-weight: 650; }
+.auth-brand .nerivane-mark { width: 36px; height: 36px; flex-basis: 36px; }
+.auth-eyebrow { margin: 29px 0 7px; color: var(--color-primary); font-size: var(--font-size-caption); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.auth-card h1 { margin: 0; color: var(--content-primary); font-size: var(--font-size-heading-xl); font-weight: 700; letter-spacing: -.02em; }
+.auth-description { margin: 9px 0 23px; color: var(--content-secondary); font-size: var(--font-size-body); line-height: 1.55; }
+.auth-access-message { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--color-primary-container); border-radius: var(--radius-md); color: var(--content-primary); background: var(--color-primary-light); font-size: var(--font-size-body-sm); line-height: 1.45; }
+.auth-access-message strong { font-weight: 650; }
+.google-signin-button { display: flex; width: 100%; min-height: 42px; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--content-primary); background: var(--surface); cursor: pointer; font: inherit; font-size: var(--font-size-body-sm); font-weight: 600; }
+.google-signin-button:hover:not(:disabled) { background: var(--surface-muted); }
+.google-signin-button:disabled { cursor: not-allowed; opacity: .56; }
+.google-signin-button svg { width: 18px; height: 18px; }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 8px; color: var(--content-secondary); font-size: var(--font-size-caption); }
+.auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: var(--border-color); content: ''; }
+.auth-form { display: grid; gap: 8px; }
+.auth-form label { margin-top: 7px; color: var(--content-primary); font-size: var(--font-size-body-sm); font-weight: 600; }
+.auth-form input { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--content-primary); background: var(--surface); font-size: var(--font-size-body); }
+.auth-form input:focus { border-color: var(--color-primary); outline: 3px solid rgba(79, 70, 229, .1); }
+.auth-submit { min-height: 42px; margin-top: 12px; border: 0; border-radius: var(--radius-md); color: #fff; background: var(--color-primary); cursor: pointer; font-size: var(--font-size-body-sm); font-weight: 600; }
+.auth-submit:hover:not(:disabled) { background: var(--color-primary-hover); }
+.auth-submit:disabled { cursor: not-allowed; opacity: .56; }
+.auth-error, .auth-notice, .auth-config-note { margin: 5px 0; font-size: var(--font-size-body-sm); line-height: 1.5; }
+.auth-error { color: #b42318; }
+.auth-notice { color: #13745f; }
+.auth-config-note { color: var(--content-secondary); }
+.auth-mode-switch { display: flex; justify-content: center; gap: 5px; margin: 20px 0 0; color: var(--content-secondary); font-size: var(--font-size-body-sm); }
+.auth-mode-switch button { padding: 0; border: 0; color: var(--color-primary); background: transparent; cursor: pointer; font: inherit; font-weight: 600; }
+.auth-mode-switch button:disabled { cursor: default; }
+.auth-loading { display: grid; min-height: 100vh; place-items: center; color: var(--content-secondary); background: var(--canvas); font-size: var(--font-size-body); }

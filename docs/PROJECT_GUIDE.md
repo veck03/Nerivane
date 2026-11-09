@@ -15,14 +15,34 @@ Paper chunks, embeddings, and the metadata used by retrieval and citations live 
 ```text
 Browser (React/Vite)
   ├── /dashboard, /papers, and other workspace routes
-  └── /api/* requests ── Vite proxy ──> FastAPI
-                                      ├── /api/health
-                                      └── /api/chat -> router -> source tools -> final answer
+  ├── Supabase Auth (email/password session)
+  └── /api/* requests + bearer token ── Vite proxy ──> FastAPI
+                                                  ├── /api/health (public)
+                                                  ├── /api/auth/me (authenticated)
+                                                  └── /api/chat (authenticated) -> router -> source tools -> final answer
 ```
 
-The frontend currently keeps conversation history in React memory for the active browser session. It is not a server-side or durable chat history.
+The frontend currently keeps conversation history in React memory for the active browser session. It is not a server-side or durable chat history. The Dashboard at `/dashboard` is the default and guests can open every tab. Focusing a chat input, using a chat suggestion, or reopening a recent conversation opens a sign-in dialog over the current page. Click outside or choose “Continue as guest” to dismiss it. Signed-in users can use the chat. The Research Assistant lives at `/research-assistant`, while `/` resolves to the Dashboard.
 
 ## 2. Install and run the app
+
+### Supabase login setup
+
+Create or select a Supabase project and enable its Email and Google providers. Copy the Project URL and public publishable key into both local environment files, following `backend/.env.example` and `frontend/react_app/.env.example`:
+
+```text
+# backend/.env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+
+# frontend/react_app/.env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+For Google, create a Web OAuth client in Google Cloud, add the Supabase callback URL from the Supabase Google provider settings to Google's authorized redirect URIs, and enter the Google client ID and secret in Supabase. Add local origins (`http://localhost:5173`, `http://127.0.0.1:5173`) and the deployed app origin to Supabase Auth's allowed redirect URLs. The frontend redirects back to the app origin after OAuth. These are public project settings; do not use a service-role key in the frontend or backend. Restart both processes after changing the app environment files. If email confirmation is enabled, new email/password users must confirm their email before signing in. Disable public sign-ups in Supabase Auth settings if accounts should be invite-only.
+
+Nerivane reads the trusted `app_metadata.app_role` field and displays it in the sidebar; users without one default to `member`. Set roles only through trusted Supabase admin/server tooling, never client-editable `user_metadata`. Roles are informational at this stage: no feature permissions are enforced. FastAPI validates bearer tokens with Supabase Auth for `/api/chat` and `/api/auth/me`; `/api/health` remains public.
 
 ### Backend setup
 
@@ -178,9 +198,12 @@ ChromaDB, downloaded PDFs, the ingestion status file, and datasets are local/per
 
 | File/function | Responsibility |
 |---|---|
+| `backend/src/api/auth.py:AuthenticatedUser` | Holds the verified Supabase user ID, email, and trusted application role. |
+| `backend/src/api/auth.py:get_authenticated_user()` | Requires a bearer token, validates it with Supabase Auth `/auth/v1/user`, and defaults a missing role to `member`. |
 | `backend/src/api/main.py:lifespan()` | Loads and warms the Hugging Face embedding model at API startup. |
 | `ChatRequest`, `ChatResponse` | Validate the `/api/chat` request and preserve the chat response contract. |
 | `health()` | Implements `GET /api/health`. |
+| `auth_me()` | Implements authenticated `GET /api/auth/me`, returning the verified identity and role. |
 | `chat()` | Implements `POST /api/chat`, validates the query, calls `answer_query()`, and returns `ChatResponse`. |
 
 ### Backend agents and citations
@@ -242,8 +265,14 @@ ChromaDB, downloaded PDFs, the ingestion status file, and datasets are local/per
 
 | File/function | Responsibility |
 |---|---|
-| `frontend/react_app/src/main.jsx` | Mounts `<App />` inside React Strict Mode and imports global styles. |
-| `frontend/react_app/src/App.jsx:App()` | Owns the current route, chat messages, in-memory conversations, chat requests, source selections, and evidence-inspector synchronization. |
+| `frontend/react_app/src/main.jsx` | Mounts `<App />` inside React Strict Mode and `<AuthProvider>`, and imports global styles. |
+| `frontend/react_app/src/auth/supabase.js` | Creates the browser client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. |
+| `frontend/react_app/src/auth/AuthContext.jsx:AuthProvider()` | Restores and observes Supabase sessions; exposes sign-in/up/out and the trusted `app_metadata.app_role` display value. |
+| `frontend/react_app/src/auth/useAuth.js:useAuth()` | Reads authentication state and actions from React context. |
+| `frontend/react_app/src/auth/auth-context.js` | Defines the shared authentication context used by the provider and hook. |
+| `frontend/react_app/src/components/AuthScreen.jsx:AuthScreen()` | Provides email/password sign-in and account creation, including confirmation and setup states. |
+| `frontend/react_app/src/App.jsx:App()` | Shows session restoration, the auth screen, or the signed-in app. |
+| `frontend/react_app/src/App.jsx:AuthenticatedApp()` | Owns routes, chat state, authenticated chat requests, source selections, and evidence-inspector synchronization. |
 | `App.jsx:navigate()` / `normalizePath()` | Keep the small client-side route state in sync with browser history; `/research-assistant` maps to `/`. |
 | `App.jsx:startNewChat()` / `selectConversation()` | Start a blank session or restore an in-memory conversation. |
 | `App.jsx:sendMessage()` / `handleSubmit()` | Send chat requests to `/api/chat`, preserve response metadata, and manage loading/errors. |
@@ -258,6 +287,7 @@ ChromaDB, downloaded PDFs, the ingestion status file, and datasets are local/per
 | `components/DatasetCharts.jsx:DatasetCharts()` | Parses chart series returned by dataset tools and renders accessible line/bar charts as inline SVG in assistant messages. |
 | `components/PlaceholderPage.jsx:PlaceholderPage()` | Empty states for workspace sections not connected to functionality yet. |
 | `src/index.css`, `src/App.css` | Global tokens/reset and Research Assistant styles. |
+| `components/auth-screen.css` | Sign-in and session-loading screen styles. |
 | `components/application-shell.css` | Shared app shell and responsive sidebar/topbar styling. |
 | `components/dashboard-page.css` | Dashboard layout and card styles. |
 | `frontend/react_app/vite.config.js` | Vite React setup and `/api` proxy to FastAPI. |

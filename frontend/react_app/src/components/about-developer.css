@@ -21,16 +21,6 @@
 .about-bio { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-subtle); }
 .about-bio h3, .about-skill-group h3 { margin: 0 0 8px; color: var(--content-muted); font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .about-bio p { max-width: 900px; margin: 0; color: #334155; font-size: 14px; line-height: 1.75; }
-.about-architecture { overflow: hidden; padding: clamp(22px, 2.7vw, 30px); border: 1px solid #dfe3f2; border-radius: var(--radius-lg); color: var(--content-primary); background: linear-gradient(112deg, #f0f1ff, #f7f9fc 82%); }
-.about-architecture-copy { max-width: 760px; }
-.about-architecture-kicker { color: #6966b5; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-.about-architecture h2 { margin: 9px 0; font-size: clamp(19px, 3vw, 25px); letter-spacing: -.025em; }
-.about-architecture p { margin: 0; color: var(--content-secondary); font-size: 13px; line-height: 1.7; }
-.about-architecture-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 24px; }
-.about-architecture-steps article { min-height: 78px; padding: 14px; border: 1px solid #e1e5f0; border-radius: var(--radius-md); background: rgba(255,255,255,.8); }
-.about-architecture-steps span, .about-architecture-steps strong { display: block; }
-.about-architecture-steps span { color: #6966b5; font-size: 10px; font-weight: 650; }
-.about-architecture-steps strong { margin-top: 7px; font-size: 12px; font-weight: 550; }
 .about-content-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(270px, 1fr); align-items: start; gap: 28px; }
 .about-projects, .about-sidebar-content, .about-sidebar-content section { display: grid; gap: 13px; }
 .about-sidebar-content { gap: 25px; }
@@ -56,5 +46,5 @@
 .about-skill-group { display: grid; gap: 7px; }
 .about-skill-group h3 { margin-bottom: 0; }
 @media (max-width: 900px) { .about-content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr); gap: 18px; } .about-project-heading { display: grid; } }
-@media (max-width: 680px) { .about-developer { gap: 17px; } .about-profile-top { align-items: flex-start; flex-direction: column; } .about-social-links { width: 100%; } .about-social-links a { flex: 1; justify-content: center; } .about-contact { display: grid; gap: 8px; } .about-architecture-steps { grid-template-columns: 1fr; } .about-architecture-steps article { min-height: 0; } .about-content-grid { grid-template-columns: 1fr; gap: 24px; } .about-project-heading { display: flex; } }
+@media (max-width: 680px) { .about-developer { gap: 17px; } .about-profile-top { align-items: flex-start; flex-direction: column; } .about-social-links { width: 100%; } .about-social-links a { flex: 1; justify-content: center; } .about-contact { display: grid; gap: 8px; } .about-content-grid { grid-template-columns: 1fr; gap: 24px; } .about-project-heading { display: flex; } }
 @media (max-width: 420px) { .about-project-heading { flex-direction: column; } .about-education-card > div { flex-direction: column; } .about-education-card > div span:last-child { text-align: left; } }

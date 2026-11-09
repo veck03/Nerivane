@@ -55,19 +55,6 @@ export default function AboutDeveloper() {
       <div className="about-bio"><h3>About & research motivation</h3><p>{developer.about}</p></div>
     </section>
 
-    <section className="about-architecture">
-      <div className="about-architecture-copy">
-        <span className="about-architecture-kicker">Nerivane architecture flow</span>
-        <h2>Scientific RAG & dual-engine query router</h2>
-        <p>Hybrid BM25 and dense neural embedding retrieval with cross-encoder reranking. The query router dispatches between oceanographic literature and structured scientific data to support evidence-based answers.</p>
-      </div>
-      <div className="about-architecture-steps">
-        <article><span>01 / Ingestion & indexing</span><strong>ChromaDB + Sentence Transformers</strong></article>
-        <article><span>02 / Routing & reasoning</span><strong>Groq API LLM router</strong></article>
-        <article><span>03 / Evidence traceability</span><strong>Inline DOI citations & chunks</strong></article>
-      </div>
-    </section>
-
     <div className="about-content-grid">
       <section className="about-projects">
         <SectionTitle note={`${projects.length} featured projects`}>Projects & systems</SectionTitle>

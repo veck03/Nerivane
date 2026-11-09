@@ -4,11 +4,12 @@ from contextlib import asynccontextmanager
 import logging
 from typing import Any, AsyncIterator, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from agents import answer_query
+from api.auth import AuthenticatedUser, get_authenticated_user
 from config import EMBEDDING_MODEL
 from ingestion.embeddings import load_embedding_model
 
@@ -36,7 +37,7 @@ app.add_middleware(
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -76,8 +77,21 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/auth/me")
+def auth_me(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, str | None]:
+    """Return the verified user's identity and application role."""
+    return {
+        "id": current_user.user_id,
+        "email": current_user.email,
+        "app_role": current_user.app_role,
+    }
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    _current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> ChatResponse:
     """Send a query through the router and its selected source agents."""
     query = request.query.strip()
     if not query:
