@@ -12,15 +12,15 @@
 .about-social-links { display: flex; flex-wrap: wrap; gap: 9px; }
 .about-social-links a { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid transparent; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; text-decoration: none; transition: background .15s ease, transform .15s ease; }
 .about-social-links a:hover { transform: translateY(-1px); }
-.about-github { color: #fff; background: #0f172a; }
-.about-github:hover { background: #1e293b; }
+.about-github { color: var(--content-on-primary); background: var(--sidebar-bg); }
+.about-github:hover { background: var(--sidebar-hover); }
 .about-linkedin { border-color: var(--color-primary-container) !important; color: var(--color-primary); background: var(--color-primary-light); }
-.about-linkedin:hover { background: #e0e7ff; }
-.about-portfolio { border-color: #dbe4ee !important; color: #334155; background: #f8fafc; }
+.about-linkedin:hover { background: var(--color-primary-light); }
+.about-portfolio { border-color: #dbe4ee !important; color: var(--content-primary); background: var(--canvas); }
 .about-portfolio:hover { background: #eef2f7; }
 .about-bio { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-subtle); }
 .about-bio h3, .about-skill-group h3 { margin: 0 0 8px; color: var(--content-muted); font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-.about-bio p { max-width: 900px; margin: 0; color: #334155; font-size: 14px; line-height: 1.75; }
+.about-bio p { max-width: 900px; margin: 0; color: var(--content-primary); font-size: 14px; line-height: 1.75; }
 .about-content-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(270px, 1fr); align-items: start; gap: 28px; }
 .about-projects, .about-sidebar-content, .about-sidebar-content section { display: grid; gap: 13px; }
 .about-sidebar-content { gap: 25px; }
@@ -35,16 +35,37 @@
 .about-project-heading > span { flex: 0 0 auto; padding: 4px 8px; border: 1px solid var(--color-teal-border); border-radius: 999px; color: var(--color-teal); background: var(--color-teal-light); font-size: 9px; font-weight: 600; }
 .about-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .about-project-card > .about-tags { margin: 12px 0; }
-.about-tags > span { padding: 4px 7px; border-radius: 4px; color: #475569; background: #f1f5f9; font-family: var(--font-family-mono); font-size: 10px; line-height: 1.35; }
+.about-tags > span { padding: 4px 7px; border-radius: 4px; color: var(--content-secondary); background: var(--border-subtle); font-family: var(--font-family-mono); font-size: 10px; line-height: 1.35; }
 .about-project-card ul { display: grid; gap: 7px; margin: 0; padding-left: 17px; color: var(--content-secondary); font-size: 12px; line-height: 1.6; }
 .about-education-card { padding: 16px; }
 .about-education-card p { margin: 5px 0 12px; color: var(--color-primary); font-size: 11px; font-weight: 550; line-height: 1.5; }
-.about-academic-score { color: #4338ca; font-weight: 750; white-space: nowrap; }
+.about-academic-score { color: var(--color-primary-hover); font-weight: 750; white-space: nowrap; }
 .about-education-card > div { display: flex; justify-content: space-between; gap: 10px; color: var(--content-muted); font-size: 9px; }
 .about-education-card > div span:last-child { text-align: right; }
 .about-skills-card { display: grid; gap: 17px; padding: 18px; }
 .about-skill-group { display: grid; gap: 7px; }
 .about-skill-group h3 { margin-bottom: 0; }
+:root[data-theme="dark"] .about-developer,
+:root[data-theme="dark"] .about-developer h2,
+:root[data-theme="dark"] .about-developer h3,
+:root[data-theme="dark"] .about-project-heading,
+:root[data-theme="dark"] .about-project-card ul,
+:root[data-theme="dark"] .about-bio p { color:var(--content-primary); }
+:root[data-theme="dark"] .about-contact,
+:root[data-theme="dark"] .about-section-heading > span,
+:root[data-theme="dark"] .about-project-card ul,
+:root[data-theme="dark"] .about-tags > span { color:var(--content-secondary); }
+:root[data-theme="dark"] .about-education-card > div,
+:root[data-theme="dark"] .about-bio h3,
+:root[data-theme="dark"] .about-skill-group h3 { color:var(--content-muted); }
+:root[data-theme="dark"] .about-social-links .about-portfolio { color:var(--content-primary); background:var(--surface-muted); border-color:var(--border-color) !important; }
+:root[data-theme="dark"] .about-social-links .about-portfolio:hover { background:var(--surface-hover); }
+:root[data-theme="dark"] .about-project-card:hover { border-color:var(--color-primary); }
+.about-social-links .about-github { color:#fff !important; background:var(--sidebar-bg); }
+.about-social-links .about-github:hover { color:#fff !important; background:var(--sidebar-hover); }
+:root[data-theme="dark"] .about-social-links .about-github { color:#fff !important; background:var(--sidebar-bg); }
+:root[data-theme="dark"] .about-social-links .about-github:hover { background:var(--sidebar-hover); }
 @media (max-width: 900px) { .about-content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr); gap: 18px; } .about-project-heading { display: grid; } }
 @media (max-width: 680px) { .about-developer { gap: 17px; } .about-profile-top { align-items: flex-start; flex-direction: column; } .about-social-links { width: 100%; } .about-social-links a { flex: 1; justify-content: center; } .about-contact { display: grid; gap: 8px; } .about-content-grid { grid-template-columns: 1fr; gap: 24px; } .about-project-heading { display: flex; } }
 @media (max-width: 420px) { .about-project-heading { flex-direction: column; } .about-education-card > div { flex-direction: column; } .about-education-card > div span:last-child { text-align: left; } }
+

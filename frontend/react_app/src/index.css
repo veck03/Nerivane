@@ -84,3 +84,38 @@ button, input, textarea { font: inherit; }
 button:focus-visible, a:focus-visible, textarea:focus-visible, input:focus-visible { outline: 3px solid rgba(79, 70, 229, .3); outline-offset: 2px; }
 ::selection { color: #fff; background: var(--color-primary); }
 #root { min-height: 100vh; }
+/* Canonical UI color tokens */
+:root {
+  --canvas:#F7F8FA; --surface:#FFFFFF; --surface-muted:#F1F3F6; --surface-hover:#EAEDF2;
+  --content-primary:#20242C; --content-secondary:#596273; --content-muted:#8993A1;
+  --content-on-primary:#FFFFFF;
+  --border-color:#E2E6EC; --border-subtle:#EEF1F4; --border-strong:#E2E6EC;
+  --color-primary:#5146D8; --color-primary-hover:#4338B8; --color-primary-light:#EEEDFF; --color-primary-container:#EEEDFF;
+  --accent:var(--color-primary); --accent-strong:var(--color-primary-hover); --accent-soft:var(--color-primary-light);
+  --sidebar-bg:#171C27; --sidebar-hover:#252C3A; --sidebar-text:#F4F6FA; --sidebar-active:var(--color-primary-light);
+  --status-success:#16845B; --status-success-bg:#E8F5EF;
+  --status-warning:#A86A12; --status-warning-bg:#FBF2E3;
+  --status-error:#C43F45; --status-error-bg:#FBEAEC;
+  --status-info:#326DC6; --status-info-bg:#EAF1FC;
+  --status-online:var(--status-success); --status-warning-color:var(--status-warning); --status-error-color:var(--status-error);
+  --focus-ring:rgba(81,70,216,.28); --shadow-subtle:0 1px 3px rgba(32,36,44,.06); --shadow-card:0 1px 3px rgba(32,36,44,.05),0 4px 12px rgba(32,36,44,.025); --shadow-floating:0 10px 25px -5px rgba(32,36,44,.12);
+  --shadow-soft:var(--shadow-subtle); --shadow-popover:var(--shadow-floating);
+}
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --canvas:#202329; --surface:#292D34; --surface-muted:#252930; --surface-container:#343A43; --surface-hover:#343A43;
+  --content-primary:#F1F2F4; --content-secondary:#C1C6CE; --content-muted:#929AA5;
+  --content-on-primary:#202329;
+  --text-primary:var(--content-primary); --text-secondary:var(--content-secondary); --text-muted:var(--content-muted);
+  --border-color:#414750; --border-subtle:#343A42; --border-strong:#414750;
+  --color-primary:#A5AAE8; --color-primary-hover:#BCC0F1; --color-primary-light:#383B50; --color-primary-container:#383B50;
+  --accent:var(--color-primary); --accent-strong:var(--color-primary-hover); --accent-soft:var(--color-primary-light);
+  --sidebar-bg:#191C21; --sidebar-hover:#252A32; --sidebar-text:#F1F2F4; --sidebar-active:#383B50;
+  --status-success:#75C9A1; --status-success-bg:#293C35;
+  --status-warning:#E4BD70; --status-warning-bg:#40392B;
+  --status-error:#E68C88; --status-error-bg:#44302F;
+  --status-info:#A9C5F0; --status-info-bg:#30394A;
+  --status-online:var(--status-success); --status-warning-color:var(--status-warning); --status-error-color:var(--status-error);
+  --focus-ring:rgba(165,170,232,.35); --shadow-subtle:0 1px 3px rgba(0,0,0,.16); --shadow-card:0 1px 3px rgba(0,0,0,.18),0 4px 12px rgba(0,0,0,.08); --shadow-floating:0 10px 25px -5px rgba(0,0,0,.28);
+  --shadow-soft:var(--shadow-subtle); --shadow-popover:var(--shadow-floating);
+}
