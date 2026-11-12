@@ -5,9 +5,15 @@ from collections import defaultdict
 
 from rank_bm25 import BM25Okapi
 
-from config import CHROMA_DIR, EMBEDDING_MODEL
+from config import (
+    CHROMA_DIR,
+    EMBEDDING_MODEL,
+    RERANKER_CANDIDATE_LIMIT,
+    RERANKER_ENABLED,
+)
 from database.chroma import get_collection
 from ingestion.embeddings import create_embeddings
+from retrieval.reranker import rerank_paper_chunks
 
 RRF_CONSTANT = 60
 
@@ -104,25 +110,25 @@ def retrieve_paper_chunks(
             matched_by[record_id].add("keyword")
 
     all_ranked_ids = sorted(fused_scores, key=fused_scores.get, reverse=True)
-    # Prefer up to two chunks per paper, then use remaining slots as needed.
-    # This diversifies normal results without returning too few chunks when the
-    # corpus has only one matching paper.
-    ranked_ids = []
+    # Build a wider, diversified candidate pool before the cross-encoder ranks
+    # the query/chunk pairs. Keep the old hybrid ordering when reranking is off.
+    candidate_limit = max(limit, RERANKER_CANDIDATE_LIMIT) if RERANKER_ENABLED else limit
+    candidate_ids = []
     deferred_ids = []
     paper_counts: dict[str, int] = defaultdict(int)
     for record_id in all_ranked_ids:
         metadata = records[record_id]["metadata"]
         paper_id = str(metadata.get("paper_id") or record_id)
         if paper_counts[paper_id] < 2:
-            ranked_ids.append(record_id)
+            candidate_ids.append(record_id)
             paper_counts[paper_id] += 1
         else:
             deferred_ids.append(record_id)
-        if len(ranked_ids) >= limit:
+        if len(candidate_ids) >= candidate_limit:
             break
-    if len(ranked_ids) < limit:
-        ranked_ids.extend(deferred_ids[:limit - len(ranked_ids)])
-    return [
+    if len(candidate_ids) < candidate_limit:
+        candidate_ids.extend(deferred_ids[:candidate_limit - len(candidate_ids)])
+    candidates = [
         {
             "chunk_id": record_id,
             "text": records[record_id]["text"],
@@ -130,6 +136,13 @@ def retrieve_paper_chunks(
             "hybrid_score": round(fused_scores[record_id], 6),
             "matched_by": sorted(matched_by[record_id]),
         }
-        for record_id in ranked_ids
+        for record_id in candidate_ids
         if record_id in records
     ]
+    if RERANKER_ENABLED:
+        return rerank_paper_chunks(query, candidates, limit=limit)
+
+    results = candidates[:limit]
+    for rank, item in enumerate(results, start=1):
+        item["hybrid_rank"] = rank
+    return results
